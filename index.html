@@ -369,7 +369,7 @@
 
     function toggleAdminMode() {
       if (!isAdmin) {
-        const pin = prompt('🔑 กรอกรหัสผ่าน Admin เพื่อเปิดสิทธิ์แอดมิน (รหัส: 1234):');
+        const pin = prompt('🔑 กรอกรหัสผ่าน Admin เพื่อเปิดสิทธิ์แอดมิน');
         if (pin === ADMIN_PIN) {
           isAdmin = true;
           document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin)';
