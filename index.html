@@ -58,7 +58,8 @@
             ระบบสถิติอุบัติเหตุทางถนน 
             <span class="bg-teal-500/20 text-teal-300 text-[9px] px-2 py-0.5 rounded-full border border-teal-500/30 font-normal">เทศบาลตำบลฉลุง</span>
             <span id="roleBadge" class="bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold">👷 โหมดสาธารณะ (ทุกคนเข้าถึงสถิติได้)</span>
-            <span id="loadingBadge" class="bg-amber-500/30 text-amber-200 text-[9px] px-2 py-0.5 rounded-full border border-amber-400/40 font-semibold animate-pulse hidden">🔄 กำลังโหลดข้อมูล...</span>
+            <span id="demoBadge" class="bg-amber-500/30 text-amber-200 text-[9px] px-2 py-0.5 rounded-full border border-amber-400/40 font-semibold">🧪 โหมดข้อมูลจำลอง (Demo)</span>
+            <span id="loadingBadge" class="bg-blue-500/30 text-blue-200 text-[9px] px-2 py-0.5 rounded-full border border-blue-400/40 font-semibold animate-pulse hidden">🔄 กำลังโหลด...</span>
           </h1>
         </div>
       </div>
@@ -164,7 +165,7 @@
     <!-- แผนที่ GIS (โหมดแอดมิน) -->
     <div id="adminSection" class="hidden space-y-4 border-2 border-dashed border-rose-300 p-4 rounded-3xl bg-rose-50/30">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-rose-100 text-rose-900 px-4 py-2 rounded-xl text-xs font-bold">
-        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)</span>
+        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)[cite: 1]</span>
         <div class="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-rose-200 shadow-2xs">
           <button type="button" onclick="setMapLayer('street')" id="btnStreet" class="px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition">🗺️ แผนที่ถนน</button>
           <button type="button" onclick="setMapLayer('satellite')" id="btnSat" class="px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition">🛰️ ภาพดาวเทียม</button>
@@ -175,7 +176,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs">
           <div id="mainMap" class="w-full h-[320px] rounded-xl border relative z-10"></div>
           <div class="mt-2 text-[11px] text-slate-500 text-center">
-            * แสดงเส้นขอบเขตพื้นที่รับผิดชอบ 1.25 ตร.กม. (ครอบคลุมบางส่วนของ หมู่ 1, 2, 5 และ 13 รวมถึงสำนักงานเทศบาลฯ)
+            * แสดงเส้นขอบเขตพื้นที่รับผิดชอบ 1.25 ตร.กม. (ครอบคลุมบางส่วนของ หมู่ 1, 2, 5 และ 13 รวมถึงสำนักงานเทศบาลฯ)[cite: 1]
           </div>
         </div>
       </div>
@@ -294,10 +295,19 @@
 
   <!-- JavaScript Logic -->
   <script>
-    // ⚠️ หากคุณสร้าง Apps Script แล้ว นำ Web App URL มาใส่ที่นี่
-    const GOOGLE_SCRIPT_URL = '';
+    // 🔗 URL ของ Google Apps Script (หากส่งไม่ได้ ระบบจะดึงข้อมูลตัวอย่างด้านล่างมาโชว์แทนทันที)
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
     const ADMIN_PIN = '1234';
     let isAdmin = false;
+
+    // 🧪 ข้อมูลชุดจำลองสถานการณ์สำหรับโหมดสาธิต (มี 5 เหตุการณ์ ครอบคลุมทุกชุมชน)
+    const SAMPLE_DEMO_DATA = [
+      { id: 1001, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-01-10', time: '08:30', place: 'ถนนเทศบาล 9 (หน้าตลาดสดฉลุง)', vehicle: 'รถจักรยานยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 2, injured: 1, deaths: 0, lat: 6.727100, lng: 100.063600, note: 'ช่วงเช้า การจราจรหนาแน่น' },
+      { id: 1002, zone: 'ชุมชนโรงเรียนอนุบาลเมืองสตูล', date: '2026-02-22', time: '17:45', place: 'สามแยกสัญญาณไฟหน้าโรงเรียน', vehicle: 'รถจักรยานยนต์', cause: 'เมาแล้วขับ', severity: 2, injured: 2, deaths: 0, lat: 6.721400, lng: 100.065900, note: 'เลี้ยวตัดหน้า' },
+      { id: 1003, zone: 'ชุมชนวัดดุลยาราม', date: '2026-03-05', time: '21:15', place: 'ถนนยนตรการกำธร (หน้าวัด)', vehicle: 'รถยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 3, injured: 1, deaths: 1, lat: 6.728000, lng: 100.067000, note: 'ฝนตก ทัศนวิสัยไม่ดี' },
+      { id: 1004, zone: 'ชุมชนชุมสายโทรศัพท์', date: '2026-04-18', time: '14:20', place: 'ซอยข้างชุมสายโทรศัพท์ฉลุง', vehicle: 'รถยนต์', cause: 'สภาพถนน / ทัศนวิสัย', severity: 1, injured: 0, deaths: 0, lat: 6.720868, lng: 100.066945, note: 'เฉี่ยวชนทรัพย์สินเสียหาย' },
+      { id: 1005, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-05-12', time: '19:30', place: 'บริเวณหน้าธนาคารกรุงไทย ฉลุง', vehicle: 'รถจักรยานยนต์', cause: 'ไม่สวมหมวกนิรภัย', severity: 2, injured: 1, deaths: 0, lat: 6.726800, lng: 100.063900, note: 'ล้มเอง' }
+    ];
 
     const ZONE_DEFINITIONS = {
       'ชุมชนตลาดสดเทศบาล': { color: '#ef4444', center: [6.7268, 100.0635], badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -305,15 +315,6 @@
       'ชุมชนชุมสายโทรศัพท์': { color: '#f59e0b', center: [6.7208688, 100.0669447], badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
       'ชุมชนวัดดุลยาราม': { color: '#8b5cf6', center: [6.7282, 100.0672], badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' }
     };
-
-    // 📌 ข้อมูลตัวอย่างสำหรับแสดงผลทันทีแบบไม่ให้เป็น 0
-    const sampleData = [
-      { id: 1, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-01-10', time: '08:30', place: 'ถนนเทศบาล 9 (หน้าตลาดสดฉลุง)', vehicle: 'รถจักรยานยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 2, injured: 1, deaths: 0, lat: 6.7271, lng: 100.0636, note: 'ช่วงเช้า' },
-      { id: 2, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-02-22', time: '17:45', place: 'สามแยกสัญญาณไฟฉลุง', vehicle: 'รถจักรยานยนต์', cause: 'เมาแล้วขับ', severity: 2, injured: 2, deaths: 0, lat: 6.7268, lng: 100.0639, note: 'ช่วงเย็น' },
-      { id: 3, zone: 'ชุมชนวัดดุลยาราม', date: '2026-03-05', time: '21:15', place: 'ถนนยนตรการกำธร (หน้าวัด)', vehicle: 'รถยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 3, injured: 1, deaths: 1, lat: 6.7280, lng: 100.0670, note: 'ช่วงดึก' },
-      { id: 4, zone: 'ชุมชนโรงเรียนอนุบาลเมืองสตูล', date: '2026-04-18', time: '14:20', place: 'หน้าโรงเรียนอนุบาลเมืองสตูล', vehicle: 'รถจักรยานยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 2, injured: 1, deaths: 0, lat: 6.7214, lng: 100.0659, note: 'ช่วงบ่าย' },
-      { id: 5, zone: 'ชุมชนชุมสายโทรศัพท์', date: '2026-05-12', time: '18:10', place: 'บริเวณชุมสายโทรศัพท์ฉลุง', vehicle: 'รถยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 1, injured: 0, deaths: 0, lat: 6.7208688, lng: 100.0669447, note: 'ช่วงเย็น' }
-    ];
 
     let records = [], mainMap = null, modalMap = null, modalMarker = null, mainMapLayers = [];
     let currentTileLayer = null;
@@ -325,7 +326,12 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initMainMap();
-      loadData();
+      loadRecordsFromGoogleSheets(true);
+
+      // ซิงก์ข้อมูลทุก 5 วินาที
+      setInterval(() => {
+        loadRecordsFromGoogleSheets(false);
+      }, 5000);
     });
 
     function showLoading(show) {
@@ -336,28 +342,31 @@
       }
     }
 
-    function loadData() {
-      if (GOOGLE_SCRIPT_URL) {
-        showLoading(true);
-        fetch(GOOGLE_SCRIPT_URL)
-          .then(res => res.json())
-          .then(data => {
-            records = (data && data.length > 0) ? data : [...sampleData];
-            populateYearFilter();
-            renderAll();
-            showLoading(false);
-          })
-          .catch(err => {
-            records = [...sampleData];
-            populateYearFilter();
-            renderAll();
-            showLoading(false);
-          });
-      } else {
-        records = [...sampleData];
-        populateYearFilter();
-        renderAll();
-      }
+    function loadRecordsFromGoogleSheets(isInitial = false) {
+      if (isInitial) showLoading(true);
+
+      fetch(GOOGLE_SCRIPT_URL)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            records = data;
+            document.getElementById('demoBadge').classList.add('hidden'); // ซ่อน Badge ข้อมูลจำลองหากดึงจาก Google Sheets สำเร็จ
+          } else {
+            records = [...SAMPLE_DEMO_DATA]; // ใช้ข้อมูลจำลองถ้าชีตว่างเปล่า
+            document.getElementById('demoBadge').classList.remove('hidden');
+          }
+          populateYearFilter();
+          renderAll();
+          if (isInitial) showLoading(false);
+        })
+        .catch(err => {
+          console.warn("ไม่สามารถดึงข้อมูลออนไลน์ได้ สลับไปใช้ข้อมูลจำลอง (Demo Data)");
+          records = [...SAMPLE_DEMO_DATA];
+          document.getElementById('demoBadge').classList.remove('hidden');
+          populateYearFilter();
+          renderAll();
+          if (isInitial) showLoading(false);
+        });
     }
 
     function toggleAdminMode() {
@@ -400,8 +409,10 @@
     function populateYearFilter() {
       const years = [...new Set(records.map(r => new Date(r.date).getFullYear() + 543))].sort((a,b) => b-a);
       const sel = document.getElementById('filterYear');
+      const currentVal = sel.value;
       sel.innerHTML = '<option value="all">ทุกปี พ.ศ.</option>';
       years.forEach(y => sel.innerHTML += `<option value="${y}">พ.ศ. ${y}</option>`);
+      sel.value = currentVal;
     }
 
     function getFilteredData() {
@@ -627,8 +638,8 @@
           <td class="py-2.5 px-3 text-center font-mono text-[10px] text-teal-700">${r.lat ? parseFloat(r.lat).toFixed(4) + ', ' + parseFloat(r.lng).toFixed(4) : '-'}</td>
           ${isAdmin ? `
             <td class="py-2.5 px-3 text-center no-print space-x-1">
-              <button onclick="openModalForEdit(${r.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg text-[10px] font-bold transition">✏️ แก้ไข</button>
-              <button onclick="deleteRecord(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded-lg text-[10px] font-bold transition">🗑️ ลบ</button>
+              <button onclick="openModalForEdit('${r.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg text-[10px] font-bold transition">✏️ แก้ไข</button>
+              <button onclick="deleteRecord('${r.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded-lg text-[10px] font-bold transition">🗑️ ลบ</button>
             </td>` : ''}
         `;
         tbody.appendChild(tr);
@@ -650,7 +661,7 @@
     }
 
     function openModalForEdit(id) {
-      const record = records.find(r => r.id == id);
+      const record = records.find(r => r.id.toString() === id.toString());
       if (!record) return;
 
       document.getElementById('editingId').value = record.id;
@@ -752,63 +763,70 @@
       };
 
       closeModal();
+      showLoading(true);
 
-      if (GOOGLE_SCRIPT_URL) {
-        showLoading(true);
-        fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: editingId ? 'update' : 'create',
-            data: payloadData
-          })
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: editingId ? 'update' : 'create',
+          data: payloadData
         })
-        .then(res => res.json())
-        .then(res => {
-          showToast(editingId ? 'แก้ไขข้อมูลสำเร็จ' : 'บันทึกเหตุการณ์สำเร็จ');
-          loadData();
-        })
-        .catch(err => {
-          showToast('บันทึกในเครื่องเรียบร้อย');
-          saveLocalRecord(payloadData, editingId);
-        });
-      } else {
-        saveLocalRecord(payloadData, editingId);
-      }
+      })
+      .then(res => res.json())
+      .then(res => {
+        showLoading(false);
+        if (res.status === 'success') {
+          showToast(editingId ? '✅ แก้ไขข้อมูลสำเร็จ' : '✅ บันทึกเหตุการณ์ลงฐานข้อมูลสำเร็จ');
+          loadRecordsFromGoogleSheets(false);
+        } else {
+          saveToLocalDemo(payloadData, editingId);
+        }
+      })
+      .catch(err => {
+        showLoading(false);
+        saveToLocalDemo(payloadData, editingId);
+      });
     }
 
-    function saveLocalRecord(payloadData, editingId) {
+    function saveToLocalDemo(payloadData, editingId) {
       if (editingId) {
-        const idx = records.findIndex(r => r.id == editingId);
+        const idx = records.findIndex(r => r.id.toString() === editingId.toString());
         if (idx !== -1) records[idx] = payloadData;
       } else {
         records.unshift(payloadData);
       }
-      showToast(editingId ? 'แก้ไขข้อมูลสำเร็จ' : 'บันทึกเหตุการณ์สำเร็จ');
+      showToast(editingId ? '✅ แก้ไขข้อมูลสำเร็จ (โหมดจำลอง)' : '✅ บันทึกเหตุการณ์สำเร็จ (โหมดจำลอง)');
       populateYearFilter();
       renderAll();
     }
 
     function deleteRecord(id) {
       if(confirm('⚠️ คำเตือน: คุณกำลังจะลบข้อมูลอุบัติเหตุนี้ ยืนยันการลบ?')) { 
-        if (GOOGLE_SCRIPT_URL) {
-          showLoading(true);
-          fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'delete', data: { id } })
-          })
-          .then(res => res.json())
-          .then(res => {
-            showToast('ลบรายการสำเร็จ');
-            loadData();
-          });
-        } else {
-          records = records.filter(r => r.id != id);
-          populateYearFilter();
+        showLoading(true);
+        fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'delete', data: { id } })
+        })
+        .then(res => res.json())
+        .then(res => {
+          showLoading(false);
+          if (res.status === 'success') {
+            showToast('🗑️ ลบรายการสำเร็จ');
+            loadRecordsFromGoogleSheets(false);
+          } else {
+            records = records.filter(r => r.id.toString() !== id.toString());
+            renderAll();
+            showToast('🗑️ ลบรายการสำเร็จ (โหมดจำลอง)');
+          }
+        })
+        .catch(err => {
+          showLoading(false);
+          records = records.filter(r => r.id.toString() !== id.toString());
           renderAll();
-          showToast('ลบรายการสำเร็จ');
-        }
+          showToast('🗑️ ลบรายการสำเร็จ (โหมดจำลอง)');
+        });
       }
     }
 
