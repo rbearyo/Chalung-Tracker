@@ -94,10 +94,10 @@
     <div class="hidden infographic-header">
       <div>
         <h2 class="text-base font-bold text-slate-900">รายงานสรุปสาระสำคัญสถิติอุบัติเหตุทางถนน (Infographic Report)</h2>
-        <p class="text-xs text-slate-600">เทศบาลตำบลฉลุง อำเภอเมืองสตูล จังหวัดสตูล | ข้อมูล ณ วันที่ <span id="reportPrintDate"></span></p>
+        <p class="text-xs text-slate-600">เทศบาลตำบลฉลุง อำเภอเมืองสตูล จังหวัดสตูล[cite: 1] | ข้อมูล ณ วันที่ <span id="reportPrintDate"></span></p>
       </div>
       <div class="text-right">
-        <span class="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-lg">ครอบคลุมพื้นที่ 1.25 ตร.กม. (4 ชุมชน)</span>
+        <span class="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-lg">ครอบคลุมพื้นที่ 1.25 ตร.กม. (4 ชุมชน)[cite: 1]</span>
       </div>
     </div>
 
@@ -106,7 +106,7 @@
       <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto text-xs">
         <span class="font-bold text-slate-500">🎯 ตัวกรองชุมชน:</span>
         <select id="filterZone" onchange="renderAll()" class="bg-teal-50 border border-teal-200 text-teal-900 rounded-lg px-2.5 py-1 font-semibold">
-          <option value="all">🗺️ ทุกชุมชน (4 ชุมชน)</option>
+          <option value="all">🗺️ ทุกชุมชน (4 ชุมชน)[cite: 1]</option>
           <option value="ชุมชนตลาดสดเทศบาล">ชุมชนตลาดสดเทศบาล</option>
           <option value="ชุมชนโรงเรียนอนุบาลเมืองสตูล">ชุมชนโรงเรียนอนุบาลเมืองสตูล</option>
           <option value="ชุมชนชุมสายโทรศัพท์">ชุมชนชุมสายโทรศัพท์</option>
@@ -548,7 +548,7 @@
       });
     }
 
-    // 🕒 ฟังก์ชันคำนวณช่วงเวลาเกิดเหตุเสี่ยงสูงสุด (รองรับทั้งข้อความและรูปแบบ Date จากชีต)
+    // 🕒 ฟังก์ชันคำนวณช่วงเวลาเกิดเหตุเสี่ยงสูงสุด (รองรับเวลาทุกรูปแบบในชีต)
     function renderTimeChart(data) {
       const slots = {
         'เช้า (06-12 น.)': 0,
@@ -561,23 +561,27 @@
         if (!r.time) return;
         
         let hr = NaN;
+        let timeStr = r.time.toString().trim();
 
-        // กรณีที่ Google Sheets ส่งค่าเวลามาเป็น Object วันที่หรือมีคำว่า GMT
-        if (typeof r.time === 'string' && r.time.includes('GMT')) {
-          const match = r.time.match(/(\d{2}):(\d{2}):(\d{2})/);
+        // กรณีมีเครื่องหมาย : เช่น "15:34" หรือ "16:0" หรือมี GMT
+        if (timeStr.includes(':')) {
+          const match = timeStr.match(/(\d{2}):(\d{2})/);
           if (match) {
             hr = parseInt(match[1], 10);
+          } else {
+            const parts = timeStr.split(':');
+            hr = parseInt(parts[0], 10);
           }
         } 
-        // กรณีที่เป็นข้อความปกติ เช่น "15:34"
-        else if (typeof r.time === 'string' && r.time.includes(':')) {
-          const parts = r.time.split(':');
-          hr = parseInt(parts[0], 10);
+        // กรณีเก็บเป็นตัวเลขทศนิยมเวลาของ Google Sheets (เช่น 0.65...)
+        else if (!isNaN(timeStr) && timeStr !== '') {
+          const totalMinutes = Math.round(parseFloat(timeStr) * 24 * 60);
+          hr = Math.floor(totalMinutes / 60) % 24;
         }
 
         if (isNaN(hr)) return;
 
-        // จัดกลุ่มช่วงเวลา
+        // จัดกลุ่มช่วงเวลาตามชั่วโมง
         if (hr >= 6 && hr < 12) {
           slots['เช้า (06-12 น.)']++;
         } else if (hr >= 12 && hr < 16) {
