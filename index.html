@@ -295,12 +295,12 @@
 
   <!-- JavaScript Logic -->
   <script>
-    // 🔗 URL ของ Google Apps Script (หากส่งไม่ได้ ระบบจะดึงข้อมูลตัวอย่างด้านล่างมาโชว์แทนทันที)
+    // 🔗 URL ของ Google Apps Script
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
     const ADMIN_PIN = '1234';
     let isAdmin = false;
 
-    // 🧪 ข้อมูลชุดจำลองสถานการณ์สำหรับโหมดสาธิต (มี 5 เหตุการณ์ ครอบคลุมทุกชุมชน)
+    // 🧪 ข้อมูลชุดจำลองสถานการณ์สำหรับโหมดสาธิต
     const SAMPLE_DEMO_DATA = [
       { id: 1001, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-01-10', time: '08:30', place: 'ถนนเทศบาล 9 (หน้าตลาดสดฉลุง)', vehicle: 'รถจักรยานยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 2, injured: 1, deaths: 0, lat: 6.727100, lng: 100.063600, note: 'ช่วงเช้า การจราจรหนาแน่น' },
       { id: 1002, zone: 'ชุมชนโรงเรียนอนุบาลเมืองสตูล', date: '2026-02-22', time: '17:45', place: 'สามแยกสัญญาณไฟหน้าโรงเรียน', vehicle: 'รถจักรยานยนต์', cause: 'เมาแล้วขับ', severity: 2, injured: 2, deaths: 0, lat: 6.721400, lng: 100.065900, note: 'เลี้ยวตัดหน้า' },
@@ -350,9 +350,9 @@
         .then(data => {
           if (Array.isArray(data) && data.length > 0) {
             records = data;
-            document.getElementById('demoBadge').classList.add('hidden'); // ซ่อน Badge ข้อมูลจำลองหากดึงจาก Google Sheets สำเร็จ
+            document.getElementById('demoBadge').classList.add('hidden');
           } else {
-            records = [...SAMPLE_DEMO_DATA]; // ใช้ข้อมูลจำลองถ้าชีตว่างเปล่า
+            records = [...SAMPLE_DEMO_DATA];
             document.getElementById('demoBadge').classList.remove('hidden');
           }
           populateYearFilter();
@@ -841,6 +841,12 @@
       link.download = `สถิติอุบัติเหตุ_เทศบาลตำบลฉลุง_${new Date().toISOString().slice(0,10)}.csv`;
       link.click();
       showToast('ดาวน์โหลดไฟล์ CSV สำเร็จ');
+    }
+
+    // 🖨️ ฟังก์ชันสั่งพิมพ์รายงาน Infographic
+    function generateInfographicReport() {
+      window.print();
+      showToast('🖨️ เปิดหน้าต่างพิมพ์รายงานสำเร็จ');
     }
 
     function formatDate(dStr) {
