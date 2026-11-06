@@ -33,20 +33,16 @@
   .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-  /* 🖨️ สไตล์เฉพาะสำหรับการพิมพ์รายงาน Infographic หน้าเดียว (A4 Landscape) */
   @media print {
     @page { size: A4 landscape; margin: 6mm; }
     .no-print, header, section:has(#searchInput), .table-section-container { display: none !important; }
     body { background: white !important; font-size: 11px !important; color: #0f172a !important; }
-    main { padding: 0 !important; max-width: 100% !important; display: block !important; space-y: 12px !important; }
-    
-    /* แสดงส่วนแผนที่ให้เด่นชัดในโหมดพิมพ์ */
+    main { padding: 0 !important; max-width: 100% !important; display: block !important; }
     #adminSection { display: block !important; border: 1px solid #cbd5e1 !important; background: white !important; padding: 8px !important; border-radius: 12px !important; }
     #mainMap { height: 220px !important; }
     #zoneCardsContainer { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important; }
-
     .infographic-header { display: flex !important; justify-content: space-between; align-items: center; border-b: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-    .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xs { box-shadow: none !important; }
+    .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none !important; }
   }
 </style>
 </head>
@@ -65,15 +61,15 @@
           <h1 class="text-xs font-bold tracking-tight text-white flex flex-wrap items-center gap-2">
             ระบบสถิติอุบัติเหตุทางถนน 
             <span class="bg-teal-500/20 text-teal-300 text-[9px] px-2 py-0.5 rounded-full border border-teal-500/30 font-normal">เทศบาลตำบลฉลุง</span>
-            <span id="roleBadge" class="bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold">👷 โหมดสาธารณะ (ทุกคนเข้าถึงสถิติได้)</span>
-            <span id="demoBadge" class="bg-amber-500/30 text-amber-200 text-[9px] px-2 py-0.5 rounded-full border border-amber-400/40 font-semibold">🧪 โหมดข้อมูลจำลอง (Demo)</span>
-            <span id="loadingBadge" class="bg-blue-500/30 text-blue-200 text-[9px] px-2 py-0.5 rounded-full border border-blue-400/40 font-semibold animate-pulse hidden">🔄 กำลังโหลด...</span>
+            <span id="roleBadge" class="bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold">👷 โหมดสาธารณะ</span>
+            <span id="syncBadge" class="bg-emerald-500/30 text-emerald-200 text-[9px] px-2 py-0.5 rounded-full border border-emerald-400/40 font-semibold">☁️ ฐานข้อมูลกลาง Google Sheets</span>
+            <span id="loadingBadge" class="bg-blue-500/30 text-blue-200 text-[9px] px-2 py-0.5 rounded-full border border-blue-400/40 font-semibold animate-pulse hidden">🔄 กำลังซิงก์ข้อมูล...</span>
           </h1>
         </div>
       </div>
       
-      <!-- Action Buttons -->
       <div class="flex flex-wrap items-center gap-2 no-print">
+        <span id="lastUpdatedText" class="text-[10px] text-slate-400 hidden sm:inline">อัปเดตล่าสุด: -</span>
         <button onclick="openModalForAdd()" class="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1">
           ➕ บันทึกเหตุการณ์
         </button>
@@ -95,7 +91,6 @@
   <!-- Main Container -->
   <main id="exportArea" class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-4 bg-slate-50">
 
-    <!-- Header สรุปสถิติโหมดการพิมพ์ Infographic (ซ่อนหน้าปกติ) -->
     <div class="hidden infographic-header">
       <div>
         <h2 class="text-base font-bold text-slate-900">รายงานสรุปสาระสำคัญสถิติอุบัติเหตุทางถนน (Infographic Report)</h2>
@@ -124,6 +119,7 @@
         </select>
         <button onclick="resetFilters()" class="text-slate-400 hover:text-rose-600 underline">รีเซ็ต</button>
       </div>
+      <button onclick="loadRecordsFromGoogleSheets(true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg font-semibold text-xs transition">🔄 รีเฟรชข้อมูลจากชีต</button>
     </div>
 
     <!-- KPIs สรุปผล -->
@@ -171,7 +167,10 @@
       </div>
 
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-        <h3 class="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">🕒 ช่วงเวลาเกิดเหตุเสี่ยงสูงสุด</h3>
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">🕒 ช่วงเวลาเกิดเหตุเสี่ยงสูงสุด</h3>
+          <span id="peakTimeBadge" class="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold hidden">🔥 จุดเสี่ยงสูงสุด</span>
+        </div>
         <div id="timeChartContainer" class="space-y-2"></div>
       </div>
 
@@ -181,10 +180,10 @@
       </div>
     </section>
 
-    <!-- แผนที่ GIS (โหมดแอดมิน / แสดงเมื่อพิมพ์ Infographic) -->
+    <!-- แผนที่ GIS -->
     <div id="adminSection" class="hidden space-y-3 border-2 border-dashed border-rose-300 p-4 rounded-3xl bg-rose-50/30">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-rose-100 text-rose-900 px-4 py-2 rounded-xl text-xs font-bold no-print">
-        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)[cite: 1]</span>
+        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)</span>
         <div class="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-rose-200 shadow-2xs">
           <button type="button" onclick="setMapLayer('street')" id="btnStreet" class="px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition">🗺️ แผนที่ถนน</button>
           <button type="button" onclick="setMapLayer('satellite')" id="btnSat" class="px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition">🛰️ ภาพดาวเทียม</button>
@@ -194,18 +193,15 @@
         <div id="zoneCardsContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
         <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs">
           <div id="mainMap" class="w-full h-[320px] rounded-xl border relative z-10"></div>
-          <div class="mt-2 text-[11px] text-slate-500 text-center no-print">
-            * แสดงเส้นขอบเขตพื้นที่รับผิดชอบ 1.25 ตร.กม. (ครอบคลุมบางส่วนของ หมู่ 1, 2, 5 และ 13 รวมถึงสำนักงานเทศบาลฯ)[cite: 1]
-          </div>
         </div>
       </div>
     </div>
 
-    <!-- ตารางฐานข้อมูล (ซ่อนเมื่อกดพิมพ์ Infographic) -->
+    <!-- ตารางฐานข้อมูล -->
     <section class="space-y-3 table-section-container">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
         <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-          📋 ตารางบันทึกเหตุการณ์อุบัติเหตุทั้งหมด
+          📋 ตารางบันทึกเหตุการณ์อุบัติเหตุทั้งหมดจาก Google Sheets กลาง
           <span id="adminTableBadge" class="hidden text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">โหมดแอดมิน (เปิดสิทธิ์แก้ไขและลบข้อมูล)</span>
         </h2>
         <input type="text" id="searchInput" oninput="renderTable()" placeholder="🔍 ค้นหาสถานที่, ชุมชน, สาเหตุ..." class="bg-white border text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 w-56 shadow-2xs">
@@ -245,7 +241,7 @@
         <input type="hidden" id="editingId">
         <div class="grid grid-cols-2 gap-3">
           <div><label class="block font-semibold mb-1">วันที่เกิดเหตุ *</label><input type="date" id="fieldDate" required class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
-          <div><label class="block font-semibold mb-1">เวลา *</label><input type="time" id="fieldTime" required class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+          <div><label class="block font-semibold mb-1">เวลา (เช่น 15:30) *</label><input type="time" id="fieldTime" required class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div class="col-span-2"><label class="block font-semibold mb-1">สถานที่ / ถนน *</label><input type="text" id="fieldPlace" required placeholder="เช่น หน้าตลาดสดฉลุง" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
@@ -261,7 +257,7 @@
         </div>
         <div class="bg-slate-50 p-3 rounded-xl border space-y-2">
           <div class="flex justify-between items-center">
-            <label class="font-bold text-slate-800">📍 กำหนด/แก้ไขพิกัด GPS (คลิกบนแผนที่ หรือลากหมุด)</label>
+            <label class="font-bold text-slate-800">📍 กำหนดพิกัด GPS บนแผนที่</label>
             <button type="button" onclick="getCurrentGPSLocation()" class="bg-teal-600 text-white px-2.5 py-1 rounded-lg text-[11px]">◎ ใช้ GPS ปัจจุบัน</button>
           </div>
           <div id="modalMap" class="w-full h-44 rounded-lg border relative z-10"></div>
@@ -307,26 +303,15 @@
     </div>
   </div>
 
-  <!-- Toast Notice -->
   <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl shadow-xl z-50 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
     <span id="toastMsg">สำเร็จ</span>
   </div>
 
   <!-- JavaScript Logic -->
   <script>
-    // 🔗 URL ของ Google Apps Script
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
     const ADMIN_PIN = '1234';
     let isAdmin = false;
-
-    // 🧪 ข้อมูลชุดจำลองสถานการณ์สำหรับโหมดสาธิต
-    const SAMPLE_DEMO_DATA = [
-      { id: 1001, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-01-10', time: '08:30', place: 'ถนนเทศบาล 9 (หน้าตลาดสดฉลุง)', vehicle: 'รถจักรยานยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 2, injured: 1, deaths: 0, lat: 6.727100, lng: 100.063600, note: 'ช่วงเช้า การจราจรหนาแน่น' },
-      { id: 1002, zone: 'ชุมชนโรงเรียนอนุบาลเมืองสตูล', date: '2026-02-22', time: '17:45', place: 'สามแยกสัญญาณไฟหน้าโรงเรียน', vehicle: 'รถจักรยานยนต์', cause: 'เมาแล้วขับ', severity: 2, injured: 2, deaths: 0, lat: 6.721400, lng: 100.065900, note: 'เลี้ยวตัดหน้า' },
-      { id: 1003, zone: 'ชุมชนวัดดุลยาราม', date: '2026-03-05', time: '21:15', place: 'ถนนยนตรการกำธร (หน้าวัด)', vehicle: 'รถยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 3, injured: 1, deaths: 1, lat: 6.728000, lng: 100.067000, note: 'ฝนตก ทัศนวิสัยไม่ดี' },
-      { id: 1004, zone: 'ชุมชนชุมสายโทรศัพท์', date: '2026-04-18', time: '14:20', place: 'ซอยข้างชุมสายโทรศัพท์ฉลุง', vehicle: 'รถยนต์', cause: 'สภาพถนน / ทัศนวิสัย', severity: 1, injured: 0, deaths: 0, lat: 6.720868, lng: 100.066945, note: 'เฉี่ยวชนทรัพย์สินเสียหาย' },
-      { id: 1005, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-05-12', time: '19:30', place: 'บริเวณหน้าธนาคารกรุงไทย ฉลุง', vehicle: 'รถจักรยานยนต์', cause: 'ไม่สวมหมวกนิรภัย', severity: 2, injured: 1, deaths: 0, lat: 6.726800, lng: 100.063900, note: 'ล้มเอง' }
-    ];
 
     const ZONE_DEFINITIONS = {
       'ชุมชนตลาดสดเทศบาล': { color: '#ef4444', center: [6.7268, 100.0635], badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -347,9 +332,10 @@
       initMainMap();
       loadRecordsFromGoogleSheets(true);
 
+      // โหลดข้อมูลอัตโนมัติจาก Google Sheets ทุก 15 วินาที เพื่อให้ทุกเครื่องเห็นข้อมูลตรงกันโดยไม่ต้องกดรีเฟรช
       setInterval(() => {
         loadRecordsFromGoogleSheets(false);
-      }, 5000);
+      }, 15000);
     });
 
     function showLoading(show) {
@@ -366,23 +352,17 @@
       fetch(GOOGLE_SCRIPT_URL)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             records = data;
-            document.getElementById('demoBadge').classList.add('hidden');
-          } else {
-            records = [...SAMPLE_DEMO_DATA];
-            document.getElementById('demoBadge').classList.remove('hidden');
+            const nowStr = new Date().toLocaleTimeString('th-TH');
+            document.getElementById('lastUpdatedText').innerText = `อัปเดตล่าสุด: ${nowStr}`;
           }
           populateYearFilter();
           renderAll();
           if (isInitial) showLoading(false);
         })
         .catch(err => {
-          console.warn("ไม่สามารถดึงข้อมูลออนไลน์ได้ สลับไปใช้ข้อมูลจำลอง (Demo Data)");
-          records = [...SAMPLE_DEMO_DATA];
-          document.getElementById('demoBadge').classList.remove('hidden');
-          populateYearFilter();
-          renderAll();
+          console.warn("ไม่สามารถเชื่อมต่อ Google Sheets กลางได้");
           if (isInitial) showLoading(false);
         });
     }
@@ -392,7 +372,7 @@
         const pin = prompt('🔑 กรอกรหัสผ่าน Admin เพื่อเปิดสิทธิ์แอดมิน (รหัส: 1234):');
         if (pin === ADMIN_PIN) {
           isAdmin = true;
-          document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin - มีสิทธิ์แก้ไข/ลบ/พิมพ์รายงาน)';
+          document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin)';
           document.getElementById('roleBadge').className = 'bg-rose-500/30 text-rose-200 text-[9px] px-2 py-0.5 rounded-full border border-rose-400/40 font-semibold';
           document.getElementById('adminToggleBtn').innerHTML = '🚪 ออกจากโหมดแอดมิน';
           
@@ -409,7 +389,7 @@
         }
       } else {
         isAdmin = false;
-        document.getElementById('roleBadge').innerHTML = '👷 โหมดสาธารณะ (ทุกคนเข้าถึงสถิติได้)';
+        document.getElementById('roleBadge').innerHTML = '👷 โหมดสาธารณะ';
         document.getElementById('roleBadge').className = 'bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold';
         document.getElementById('adminToggleBtn').innerHTML = '🔐 เข้าสู่โหมดแอดมิน';
         
@@ -425,7 +405,7 @@
     }
 
     function populateYearFilter() {
-      const years = [...new Set(records.map(r => new Date(r.date).getFullYear() + 543))].sort((a,b) => b-a);
+      const years = [...new Set(records.map(r => new Date(r.date).getFullYear() + 543))].filter(y => !isNaN(y)).sort((a,b) => b-a);
       const sel = document.getElementById('filterYear');
       const currentVal = sel.value;
       sel.innerHTML = '<option value="all">ทุกปี พ.ศ.</option>';
@@ -465,7 +445,7 @@
       document.getElementById('kpiAccidents').innerText = data.length.toLocaleString();
       document.getElementById('kpiDeaths').innerText = data.reduce((s, r) => s + (parseInt(r.deaths) || 0), 0).toLocaleString();
       document.getElementById('kpiInjured').innerText = data.reduce((s, r) => s + (parseInt(r.injured) || 0), 0).toLocaleString();
-      document.getElementById('kpiLocations').innerText = new Set(data.map(r => r.place.trim())).size.toLocaleString();
+      document.getElementById('kpiLocations').innerText = new Set(data.map(r => (r.place || '').trim())).size.toLocaleString();
     }
 
     function renderZoneCards(allRecords) {
@@ -525,18 +505,13 @@
       mainMapLayers = [];
 
       const boundaryCoords = [
-        [6.7310, 100.0610],
-        [6.7320, 100.0700],
-        [6.7250, 100.0725],
-        [6.7170, 100.0680],
-        [6.7165, 100.0610],
-        [6.7220, 100.0580]
+        [6.7310, 100.0610], [6.7320, 100.0700], [6.7250, 100.0725],
+        [6.7170, 100.0680], [6.7165, 100.0610], [6.7220, 100.0580]
       ];
       
       const municipalityPolygon = L.polygon(boundaryCoords, {
         color: '#0284c7', weight: 3, dashArray: '6,6', fillColor: '#38bdf8', fillOpacity: 0.15
       }).addTo(mainMap);
-      
       mainMapLayers.push(municipalityPolygon);
 
       data.forEach(r => {
@@ -573,33 +548,60 @@
       });
     }
 
+    // 🕒 ฟังก์ชันคำนวณช่วงเวลาที่แก้ไขใหม่ ป้องกันเวลาผิดพลาดไปกองที่ช่วงดึก + ไฮไลต์สูงสุดอัตโนมัติ
     function renderTimeChart(data) {
-      const slots = { 'เช้า (06-12 น.)': 0, 'บ่าย (12-16 น.)': 0, 'เย็น (16-20 น.)': 0, 'ดึก (20-06 น.)': 0 };
+      const slots = {
+        'เช้า (06-12 น.)': 0,
+        'บ่าย (12-16 น.)': 0,
+        'เย็น (16-20 น.)': 0,
+        'ดึก (20-06 น.)': 0
+      };
+
       data.forEach(r => {
-        if (!r.time) return;
-        const hr = parseInt(r.time.split(':')[0]);
+        if (!r.time || typeof r.time !== 'string' || !r.time.includes(':')) return;
+        const parts = r.time.split(':');
+        const hr = parseInt(parts[0], 10);
+        if (isNaN(hr)) return;
+
         if (hr >= 6 && hr < 12) slots['เช้า (06-12 น.)']++;
         else if (hr >= 12 && hr < 16) slots['บ่าย (12-16 น.)']++;
         else if (hr >= 16 && hr < 20) slots['เย็น (16-20 น.)']++;
         else slots['ดึก (20-06 น.)']++;
       });
+
       const maxVal = Math.max(...Object.values(slots), 1);
+      const peakBadge = document.getElementById('peakTimeBadge');
       const container = document.getElementById('timeChartContainer');
       if (!container) return;
       container.innerHTML = '';
+
+      let hasPeak = false;
       Object.entries(slots).forEach(([label, count]) => {
+        const isPeak = count === maxVal && count > 0;
+        if (isPeak) hasPeak = true;
         const pct = Math.round((count / maxVal) * 100);
+        
         container.innerHTML += `
-          <div class="space-y-0.5">
-            <div class="flex justify-between text-[10px] font-medium"><span class="text-slate-700">${label}</span><span class="font-bold text-slate-900">${count} ครั้ง</span></div>
-            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width: ${pct}%;"></div></div>
+          <div class="space-y-0.5 ${isPeak ? 'bg-rose-50/70 p-1.5 rounded-lg border border-rose-200' : ''}">
+            <div class="flex justify-between text-[10px] font-medium">
+              <span class="${isPeak ? 'font-bold text-rose-900' : 'text-slate-700'}">${label} ${isPeak ? '🔥 (สูงสุด)' : ''}</span>
+              <span class="font-bold ${isPeak ? 'text-rose-700' : 'text-slate-900'}">${count} ครั้ง</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full ${isPeak ? 'bg-rose-600' : 'bg-indigo-500'} rounded-full transition-all duration-300" style="width: ${pct}%;"></div>
+            </div>
           </div>`;
       });
+
+      if (peakBadge) {
+        if (hasPeak) peakBadge.classList.remove('hidden');
+        else peakBadge.classList.add('hidden');
+      }
     }
 
     function renderCauseList(data) {
       const causeMap = {};
-      data.forEach(r => causeMap[r.cause] = (causeMap[r.cause] || 0) + 1);
+      data.forEach(r => { if(r.cause) causeMap[r.cause] = (causeMap[r.cause] || 0) + 1; });
       const sorted = Object.entries(causeMap).sort((a,b) => b[1] - a[1]);
       const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
       const container = document.getElementById('causeListContainer');
@@ -621,9 +623,9 @@
       
       const filtered = data.filter(r => 
         (r.zone && r.zone.toLowerCase().includes(q)) ||
-        r.place.toLowerCase().includes(q) ||
-        r.cause.toLowerCase().includes(q) ||
-        r.vehicle.toLowerCase().includes(q)
+        (r.place && r.place.toLowerCase().includes(q)) ||
+        (r.cause && r.cause.toLowerCase().includes(q)) ||
+        (r.vehicle && r.vehicle.toLowerCase().includes(q))
       ).sort((a,b) => new Date(b.date) - new Date(a.date));
 
       const tbody = document.getElementById('tableBody');
@@ -631,7 +633,7 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium">ไม่พบรายการข้อมูล</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium">ไม่พบรายการข้อมูลจาก Google Sheets</td></tr>`;
         return;
       }
 
@@ -646,9 +648,7 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         tr.innerHTML = `
           <td class="py-2.5 px-3"><div class="font-semibold text-slate-900">${formatDate(r.date)}</div><div class="text-[9px] text-slate-400">${r.time || '-'}</div></td>
-          <td class="py-2.5 px-3">
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${zDef.badgeClass}">📍 ${escapeHtml(r.zone)}</span>
-          </td>
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${zDef.badgeClass}">📍 ${escapeHtml(r.zone)}</span></td>
           <td class="py-2.5 px-3 font-medium text-slate-800">${escapeHtml(r.place)}</td>
           <td class="py-2.5 px-3">${sevBadge}<div class="text-[9px] text-slate-500 mt-0.5">${escapeHtml(r.vehicle)} | ${escapeHtml(r.cause)}</div></td>
           <td class="py-2.5 px-3 text-center font-bold text-amber-600">${r.injured}</td>
@@ -694,7 +694,7 @@
       document.getElementById('fieldDeaths').value = record.deaths;
       document.getElementById('fieldNote').value = record.note || '';
 
-      document.getElementById('modalTitle').innerText = '✏️ แก้ไขข้อมูลอุบัติเหตุ (โหมดแอดมิน)';
+      document.getElementById('modalTitle').innerText = '✏️ แก้ไขข้อมูลอุบัติเหตุ';
       document.getElementById('submitBtnText').innerText = 'บันทึกการแก้ไข';
       document.getElementById('recordModal').classList.remove('hidden');
 
@@ -795,32 +795,20 @@
       .then(res => {
         showLoading(false);
         if (res.status === 'success') {
-          showToast(editingId ? '✅ แก้ไขข้อมูลสำเร็จ' : '✅ บันทึกเหตุการณ์ลงฐานข้อมูลสำเร็จ');
+          showToast(editingId ? '✅ แก้ไขข้อมูลสำเร็จ' : '✅ บันทึกเหตุการณ์ลง Google Sheets สำเร็จ');
           loadRecordsFromGoogleSheets(false);
         } else {
-          saveToLocalDemo(payloadData, editingId);
+          alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
         }
       })
       .catch(err => {
         showLoading(false);
-        saveToLocalDemo(payloadData, editingId);
+        alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
       });
     }
 
-    function saveToLocalDemo(payloadData, editingId) {
-      if (editingId) {
-        const idx = records.findIndex(r => r.id.toString() === editingId.toString());
-        if (idx !== -1) records[idx] = payloadData;
-      } else {
-        records.unshift(payloadData);
-      }
-      showToast(editingId ? '✅ แก้ไขข้อมูลสำเร็จ (โหมดจำลอง)' : '✅ บันทึกเหตุการณ์สำเร็จ (โหมดจำลอง)');
-      populateYearFilter();
-      renderAll();
-    }
-
     function deleteRecord(id) {
-      if(confirm('⚠️ คำเตือน: คุณกำลังจะลบข้อมูลอุบัติเหตุนี้ ยืนยันการลบ?')) { 
+      if(confirm('⚠️ คำเตือน: คุณกำลังจะลบข้อมูลอุบัติเหตุนี้ออกจาก Google Sheets ยืนยันการลบ?')) { 
         showLoading(true);
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
@@ -834,16 +822,12 @@
             showToast('🗑️ ลบรายการสำเร็จ');
             loadRecordsFromGoogleSheets(false);
           } else {
-            records = records.filter(r => r.id.toString() !== id.toString());
-            renderAll();
-            showToast('🗑️ ลบรายการสำเร็จ (โหมดจำลอง)');
+            alert('ลบรายการไม่สำเร็จ');
           }
         })
         .catch(err => {
           showLoading(false);
-          records = records.filter(r => r.id.toString() !== id.toString());
-          renderAll();
-          showToast('🗑️ ลบรายการสำเร็จ (โหมดจำลอง)');
+          alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
         });
       }
     }
@@ -861,14 +845,10 @@
       showToast('ดาวน์โหลดไฟล์ CSV สำเร็จ');
     }
 
-    // 🖨️ ฟังก์ชันสั่งพิมพ์รายงาน Infographic 1 หน้ากระดาษ
     function generateInfographicReport() {
       const today = new Date();
       document.getElementById('reportPrintDate').innerText = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()+543}`;
-      
-      // ปรับขนาดแผนที่เล็กน้อยเพื่อให้ฟิตหน้า A4 พิมพ์
       if(mainMap) { mainMap.invalidateSize(); }
-      
       window.print();
       showToast('🖨️ เปิดหน้าต่างพิมพ์รายงาน Infographic สำเร็จ');
     }
