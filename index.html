@@ -548,7 +548,7 @@
       });
     }
 
-    // 🕒 ฟังก์ชันคำนวณช่วงเวลาเกิดเหตุเสี่ยงสูงสุด (ปรับปรุงระบบเช็กเวลาใหม่ให้ตรง 100%)
+    // 🕒 ฟังก์ชันคำนวณช่วงเวลาเกิดเหตุเสี่ยงสูงสุด (รองรับทั้งข้อความและรูปแบบ Date จากชีต)
     function renderTimeChart(data) {
       const slots = {
         'เช้า (06-12 น.)': 0,
@@ -558,15 +558,35 @@
       };
 
       data.forEach(r => {
-        if (!r.time || typeof r.time !== 'string' || !r.time.includes(':')) return;
-        const parts = r.time.split(':');
-        const hr = parseInt(parts[0], 10);
+        if (!r.time) return;
+        
+        let hr = NaN;
+
+        // กรณีที่ Google Sheets ส่งค่าเวลามาเป็น Object วันที่หรือมีคำว่า GMT
+        if (typeof r.time === 'string' && r.time.includes('GMT')) {
+          const match = r.time.match(/(\d{2}):(\d{2}):(\d{2})/);
+          if (match) {
+            hr = parseInt(match[1], 10);
+          }
+        } 
+        // กรณีที่เป็นข้อความปกติ เช่น "15:34"
+        else if (typeof r.time === 'string' && r.time.includes(':')) {
+          const parts = r.time.split(':');
+          hr = parseInt(parts[0], 10);
+        }
+
         if (isNaN(hr)) return;
 
-        if (hr >= 6 && hr < 12) slots['เช้า (06-12 น.)']++;
-        else if (hr >= 12 && hr < 16) slots['บ่าย (12-16 น.)']++;
-        else if (hr >= 16 && hr < 20) slots['เย็น (16-20 น.)']++;
-        else slots['ดึก (20-06 น.)']++;
+        // จัดกลุ่มช่วงเวลา
+        if (hr >= 6 && hr < 12) {
+          slots['เช้า (06-12 น.)']++;
+        } else if (hr >= 12 && hr < 16) {
+          slots['บ่าย (12-16 น.)']++;
+        } else if (hr >= 16 && hr < 20) {
+          slots['เย็น (16-20 น.)']++;
+        } else {
+          slots['ดึก (20-06 น.)']++;
+        }
       });
 
       const maxVal = Math.max(...Object.values(slots), 1);
