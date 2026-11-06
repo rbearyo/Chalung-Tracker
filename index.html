@@ -94,10 +94,10 @@
     <div class="hidden infographic-header">
       <div>
         <h2 class="text-base font-bold text-slate-900">รายงานสรุปสาระสำคัญสถิติอุบัติเหตุทางถนน (Infographic Report)</h2>
-        <p class="text-xs text-slate-600">เทศบาลตำบลฉลุง อำเภอเมืองสตูล จังหวัดสตูล[cite: 1] | ข้อมูล ณ วันที่ <span id="reportPrintDate"></span></p>
+        <p class="text-xs text-slate-600">เทศบาลตำบลฉลุง อำเภอเมืองสตูล จังหวัดสตูล | ข้อมูล ณ วันที่ <span id="reportPrintDate"></span></p>
       </div>
       <div class="text-right">
-        <span class="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-lg">ครอบคลุมพื้นที่ 1.25 ตร.กม. (4 ชุมชน)[cite: 1]</span>
+        <span class="text-xs font-bold bg-teal-100 text-teal-800 px-2 py-1 rounded-lg">ครอบคลุมพื้นที่ 1.25 ตร.กม. (4 ชุมชน)</span>
       </div>
     </div>
 
@@ -106,7 +106,7 @@
       <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto text-xs">
         <span class="font-bold text-slate-500">🎯 ตัวกรองชุมชน:</span>
         <select id="filterZone" onchange="renderAll()" class="bg-teal-50 border border-teal-200 text-teal-900 rounded-lg px-2.5 py-1 font-semibold">
-          <option value="all">🗺️ ทุกชุมชน (4 ชุมชน)[cite: 1]</option>
+          <option value="all">🗺️ ทุกชุมชน (4 ชุมชน)</option>
           <option value="ชุมชนตลาดสดเทศบาล">ชุมชนตลาดสดเทศบาล</option>
           <option value="ชุมชนโรงเรียนอนุบาลเมืองสตูล">ชุมชนโรงเรียนอนุบาลเมืองสตูล</option>
           <option value="ชุมชนชุมสายโทรศัพท์">ชุมชนชุมสายโทรศัพท์</option>
@@ -183,7 +183,7 @@
     <!-- แผนที่ GIS -->
     <div id="adminSection" class="hidden space-y-3 border-2 border-dashed border-rose-300 p-4 rounded-3xl bg-rose-50/30">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-rose-100 text-rose-900 px-4 py-2 rounded-xl text-xs font-bold no-print">
-        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)[cite: 1]</span>
+        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)</span>
         <div class="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-rose-200 shadow-2xs">
           <button type="button" onclick="setMapLayer('street')" id="btnStreet" class="px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition">🗺️ แผนที่ถนน</button>
           <button type="button" onclick="setMapLayer('satellite')" id="btnSat" class="px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition">🛰️ ภาพดาวเทียม</button>
@@ -310,7 +310,6 @@
   <!-- JavaScript Logic -->
   <script>
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
-    const ADMIN_PIN = '1234';
     let isAdmin = false;
 
     const ZONE_DEFINITIONS = {
@@ -367,26 +366,22 @@
         });
     }
 
+    // 🔓 ปรับปรุงฟังก์ชันให้สลับโหมดแอดมินได้ทันทีโดยไม่ต้องถามรหัสผ่าน
     function toggleAdminMode() {
       if (!isAdmin) {
-        const pin = prompt('🔑 กรอกรหัสผ่าน Admin เพื่อเปิดสิทธิ์แอดมิน');
-        if (pin === ADMIN_PIN) {
-          isAdmin = true;
-          document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin)';
-          document.getElementById('roleBadge').className = 'bg-rose-500/30 text-rose-200 text-[9px] px-2 py-0.5 rounded-full border border-rose-400/40 font-semibold';
-          document.getElementById('adminToggleBtn').innerHTML = '🚪 ออกจากโหมดแอดมิน';
-          
-          document.getElementById('adminSection').classList.remove('hidden');
-          document.getElementById('adminColHeader').classList.remove('hidden');
-          document.getElementById('adminTableBadge').classList.remove('hidden');
-          document.getElementById('adminReportBtn').classList.remove('hidden');
-          document.getElementById('adminExcelBtn').classList.remove('hidden');
-          
-          if (mainMap) { setTimeout(() => mainMap.invalidateSize(), 100); }
-          showToast('เข้าสู่โหมดแอดมินสำเร็จ');
-        } else if (pin !== null) {
-          alert('รหัสผ่านไม่ถูกต้อง');
-        }
+        isAdmin = true;
+        document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin)';
+        document.getElementById('roleBadge').className = 'bg-rose-500/30 text-rose-200 text-[9px] px-2 py-0.5 rounded-full border border-rose-400/40 font-semibold';
+        document.getElementById('adminToggleBtn').innerHTML = '🚪 ออกจากโหมดแอดมิน';
+        
+        document.getElementById('adminSection').classList.remove('hidden');
+        document.getElementById('adminColHeader').classList.remove('hidden');
+        document.getElementById('adminTableBadge').classList.remove('hidden');
+        document.getElementById('adminReportBtn').classList.remove('hidden');
+        document.getElementById('adminExcelBtn').classList.remove('hidden');
+        
+        if (mainMap) { setTimeout(() => mainMap.invalidateSize(), 100); }
+        showToast('เข้าสู่โหมดแอดมินสำเร็จ');
       } else {
         isAdmin = false;
         document.getElementById('roleBadge').innerHTML = '👷 โหมดสาธารณะ';
