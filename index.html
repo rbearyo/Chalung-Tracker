@@ -122,7 +122,7 @@
       <button onclick="loadRecordsFromGoogleSheets(true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg font-semibold text-xs transition">🔄 รีเฟรชข้อมูลจากชีต</button>
     </div>
 
-    <!-- KPIs สรุปผล -->
+    <!-- KPIs สรุปผล (เพิ่มกรอบพื้นหลังขาวให้ไอคอนโดดเด่นชัดเจน) -->
     <section class="space-y-3">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -130,7 +130,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">อุบัติเหตุรวม</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiAccidents">0</h3>
           </div>
-          <div class="text-2xl opacity-20">🚗</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">🚗</div>
         </div>
 
         <div class="bg-gradient-to-br from-rose-600 to-red-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -138,7 +138,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">ผู้เสียชีวิต</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiDeaths">0</h3>
           </div>
-          <div class="text-2xl opacity-20">✝️</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">✝️</div>
         </div>
 
         <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -146,7 +146,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">ผู้บาดเจ็บ</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiInjured">0</h3>
           </div>
-          <div class="text-2xl opacity-20">🩹</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">🩹</div>
         </div>
 
         <div class="bg-gradient-to-br from-teal-600 to-emerald-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -154,7 +154,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">จุดเกิดเหตุ</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiLocations">0</h3>
           </div>
-          <div class="text-2xl opacity-20">📍</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">📍</div>
         </div>
       </div>
     </section>
@@ -557,7 +557,6 @@
         let hr = NaN;
         let timeStr = r.time.toString().trim();
 
-        // กรณีมีเครื่องหมาย : เช่น "15:34" หรือ "16:0" หรือมี GMT
         if (timeStr.includes(':')) {
           const match = timeStr.match(/(\d{2}):(\d{2})/);
           if (match) {
@@ -567,7 +566,6 @@
             hr = parseInt(parts[0], 10);
           }
         } 
-        // กรณีเก็บเป็นตัวเลขทศนิยมเวลาของ Google Sheets (เช่น 0.65...)
         else if (!isNaN(timeStr) && timeStr !== '') {
           const totalMinutes = Math.round(parseFloat(timeStr) * 24 * 60);
           hr = Math.floor(totalMinutes / 60) % 24;
@@ -575,7 +573,6 @@
 
         if (isNaN(hr)) return;
 
-        // จัดกลุ่มช่วงเวลาตามชั่วโมง
         if (hr >= 6 && hr < 12) {
           slots['เช้า (06-12 น.)']++;
         } else if (hr >= 12 && hr < 16) {
