@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบบันทึกและวิเคราะห์สถิติอุบัติเหตุทางถนน | เทศบาลตำบลฉลุง</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Prompt', 'sans-serif'] },
+      }
+    }
+  }
+</script>
+
+<style>
+  body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; color: #1e293b; font-size: 13px; }
+  .leaflet-popup-content-wrapper { border-radius: 12px; padding: 2px; }
+  .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+  @media print {
+    @page { size: A4 landscape; margin: 8mm; }
+    .no-print { display: none !important; }
+    body { background: white !important; font-size: 12px !important; }
+    main { padding: 0 !important; max-width: 100% !important; display: block !important; }
+    .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none !important; }
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- Header Bar -->
+  <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-teal-400 p-0.5 flex items-center justify-center">
+          <div class="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
+            <span class="text-amber-400 font-bold text-[10px]">ฉลุง</span>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-xs font-bold tracking-tight text-white flex flex-wrap items-center gap-2">
+            ระบบสถิติอุบัติเหตุทางถนน 
+            <span class="bg-teal-500/20 text-teal-300 text-[9px] px-2 py-0.5 rounded-full border border-teal-500/30 font-normal">เทศบาลตำบลฉลุง</span>
+            <span id="roleBadge" class="bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold">👷 โหมดสาธารณะ (ทุกคนเข้าถึงสถิติได้)</span>
+            <span id="loadingBadge" class="bg-amber-500/30 text-amber-200 text-[9px] px-2 py-0.5 rounded-full border border-amber-400/40 font-semibold animate-pulse hidden">🔄 กำลังโหลดข้อมูล...</span>
+          </h1>
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center gap-2 no-print">
+        <button onclick="openModalForAdd()" class="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1">
+          ➕ บันทึกเหตุการณ์
+        </button>
+        <button id="adminReportBtn" onclick="generateInfographicReport()" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition items-center gap-1">
+          📊 พิมพ์รายงาน Infographic
+        </button>
+        <button id="adminExcelBtn" onclick="exportCSV()" class="hidden bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition items-center gap-1">
+          📥 โหลด Excel (CSV)
+        </button>
+        
+        <div class="h-4 w-[1px] bg-slate-700 my-auto"></div>
+        <button id="adminToggleBtn" onclick="toggleAdminMode()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          🔐 เข้าสู่โหมดแอดมิน
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main id="exportArea" class="max-w-7xl mx-auto px-4 py-4 flex-1 w-full space-y-6 bg-slate-50">
+
+    <!-- Filter Control Panel -->
+    <div class="bg-white p-3 rounded-2xl shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-2 no-print">
+      <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto text-xs">
+        <span class="font-bold text-slate-500">🎯 ตัวกรองชุมชน:</span>
+        <select id="filterZone" onchange="renderAll()" class="bg-teal-50 border border-teal-200 text-teal-900 rounded-lg px-2.5 py-1 font-semibold">
+          <option value="all">🗺️ ทุกชุมชน (4 ชุมชน)</option>
+          <option value="ชุมชนตลาดสดเทศบาล">ชุมชนตลาดสดเทศบาล</option>
+          <option value="ชุมชนโรงเรียนอนุบาลเมืองสตูล">ชุมชนโรงเรียนอนุบาลเมืองสตูล</option>
+          <option value="ชุมชนชุมสายโทรศัพท์">ชุมชนชุมสายโทรศัพท์</option>
+          <option value="ชุมชนวัดดุลยาราม">ชุมชนวัดดุลยาราม</option>
+        </select>
+        <select id="filterYear" onchange="renderAll()" class="bg-slate-50 border rounded-lg px-2.5 py-1"><option value="all">ทุกปี พ.ศ.</option></select>
+        <select id="filterMonth" onchange="renderAll()" class="bg-slate-50 border rounded-lg px-2.5 py-1">
+          <option value="all">ทุกเดือน</option>
+          <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+        </select>
+        <button onclick="resetFilters()" class="text-slate-400 hover:text-rose-600 underline">รีเซ็ต</button>
+      </div>
+    </div>
+
+    <!-- KPIs สรุปผล -->
+    <section class="space-y-3">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] uppercase font-semibold opacity-80">อุบัติเหตุรวม</p>
+            <h3 class="text-2xl font-extrabold mt-0.5" id="kpiAccidents">0</h3>
+          </div>
+          <div class="text-2xl opacity-20">🚗</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-rose-600 to-red-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] uppercase font-semibold opacity-80">ผู้เสียชีวิต</p>
+            <h3 class="text-2xl font-extrabold mt-0.5" id="kpiDeaths">0</h3>
+          </div>
+          <div class="text-2xl opacity-20">✝️</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] uppercase font-semibold opacity-80">ผู้บาดเจ็บ</p>
+            <h3 class="text-2xl font-extrabold mt-0.5" id="kpiInjured">0</h3>
+          </div>
+          <div class="text-2xl opacity-20">🩹</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-teal-600 to-emerald-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[10px] uppercase font-semibold opacity-80">จุดเกิดเหตุ</p>
+            <h3 class="text-2xl font-extrabold mt-0.5" id="kpiLocations">0</h3>
+          </div>
+          <div class="text-2xl opacity-20">📍</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- กราฟสถิติ -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <h3 class="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">📈 แนวโน้มรายเดือน</h3>
+        <div id="monthlyChartContainer" class="h-36 flex items-end justify-between gap-1 border-b border-slate-200 pb-1"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <h3 class="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">🕒 ช่วงเวลาเกิดเหตุเสี่ยงสูงสุด</h3>
+        <div id="timeChartContainer" class="space-y-2"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+        <h3 class="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">⚠️ สาเหตุหลักการเกิดอุบัติเหตุ</h3>
+        <div id="causeListContainer" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- แผนที่ GIS (โหมดแอดมิน) -->
+    <div id="adminSection" class="hidden space-y-4 border-2 border-dashed border-rose-300 p-4 rounded-3xl bg-rose-50/30">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-rose-100 text-rose-900 px-4 py-2 rounded-xl text-xs font-bold">
+        <span>🛡️ แผนที่ GIS ขอบเขตพื้นที่รับผิดชอบเทศบาลตำบลฉลุง (1.25 ตร.กม. / 781.25 ไร่)</span>
+        <div class="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-rose-200 shadow-2xs">
+          <button type="button" onclick="setMapLayer('street')" id="btnStreet" class="px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition">🗺️ แผนที่ถนน</button>
+          <button type="button" onclick="setMapLayer('satellite')" id="btnSat" class="px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition">🛰️ ภาพดาวเทียม</button>
+        </div>
+      </div>
+      <div class="space-y-3">
+        <div id="zoneCardsContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+        <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs">
+          <div id="mainMap" class="w-full h-[320px] rounded-xl border relative z-10"></div>
+          <div class="mt-2 text-[11px] text-slate-500 text-center">
+            * แสดงเส้นขอบเขตพื้นที่รับผิดชอบ 1.25 ตร.กม. (ครอบคลุมบางส่วนของ หมู่ 1, 2, 5 และ 13 รวมถึงสำนักงานเทศบาลฯ)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ตารางฐานข้อมูล -->
+    <section class="space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+          📋 ตารางบันทึกเหตุการณ์อุบัติเหตุทั้งหมด
+          <span id="adminTableBadge" class="hidden text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">โหมดแอดมิน (เปิดสิทธิ์แก้ไขและลบข้อมูล)</span>
+        </h2>
+        <input type="text" id="searchInput" oninput="renderTable()" placeholder="🔍 ค้นหาสถานที่, ชุมชน, สาเหตุ..." class="bg-white border text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500 w-56 shadow-2xs">
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar max-h-[400px]">
+          <table class="w-full text-left border-collapse min-w-[850px]">
+            <thead class="sticky top-0 bg-slate-900 text-white z-10 text-[10px] uppercase font-semibold">
+              <tr>
+                <th class="py-2.5 px-3">วัน-เวลา</th>
+                <th class="py-2.5 px-3">ชุมชนพื้นที่</th>
+                <th class="py-2.5 px-3">สถานที่ / ถนน</th>
+                <th class="py-2.5 px-3">ระดับความรุนแรง / สาเหตุ</th>
+                <th class="py-2.5 px-3 text-center">บาดเจ็บ</th>
+                <th class="py-2.5 px-3 text-center">เสียชีวิต</th>
+                <th class="py-2.5 px-3 text-center">พิกัด GPS</th>
+                <th id="adminColHeader" class="py-2.5 px-3 text-center no-print hidden text-rose-300">จัดการระบบ (Admin)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 text-[11px] text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal บันทึก/แก้ไขข้อมูล -->
+  <div id="recordModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border text-xs">
+      <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
+        <h3 class="font-bold" id="modalTitle">📝 บันทึกข้อมูลอุบัติเหตุทางถนน</h3>
+        <button onclick="closeModal()" class="text-slate-400">✕</button>
+      </div>
+      <form id="accidentForm" onsubmit="handleFormSubmit(event)" class="p-5 overflow-y-auto space-y-3">
+        <input type="hidden" id="editingId">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block font-semibold mb-1">วันที่เกิดเหตุ *</label><input type="date" id="fieldDate" required class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+          <div><label class="block font-semibold mb-1">เวลา *</label><input type="time" id="fieldTime" required class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2"><label class="block font-semibold mb-1">สถานที่ / ถนน *</label><input type="text" id="fieldPlace" required placeholder="เช่น หน้าตลาดสดฉลุง" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+          <div>
+            <label class="block font-semibold mb-1">ชุมชนพื้นที่ *</label>
+            <select id="fieldZone" required onchange="handleZoneChangeInModal()" class="w-full bg-teal-50 border border-teal-300 rounded-lg px-2.5 py-1.5 font-bold text-teal-900">
+              <option value="ชุมชนตลาดสดเทศบาล">ชุมชนตลาดสดเทศบาล (หมู่ 1,2)</option>
+              <option value="ชุมชนโรงเรียนอนุบาลเมืองสตูล">ชุมชนโรงเรียนอนุบาลเมืองสตูล (หมู่ 2,5)</option>
+              <option value="ชุมชนชุมสายโทรศัพท์">ชุมชนชุมสายโทรศัพท์ (หมู่ 2,13)</option>
+              <option value="ชุมชนวัดดุลยาราม">ชุมชนวัดดุลยาราม (หมู่ 1,13)</option>
+            </select>
+          </div>
+        </div>
+        <div class="bg-slate-50 p-3 rounded-xl border space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="font-bold text-slate-800">📍 กำหนด/แก้ไขพิกัด GPS (คลิกบนแผนที่ หรือลากหมุด)</label>
+            <button type="button" onclick="getCurrentGPSLocation()" class="bg-teal-600 text-white px-2.5 py-1 rounded-lg text-[11px]">◎ ใช้ GPS ปัจจุบัน</button>
+          </div>
+          <div id="modalMap" class="w-full h-44 rounded-lg border relative z-10"></div>
+          <div class="flex justify-between bg-white p-2 rounded-lg border font-mono text-[11px]">
+            <span>พิกัดที่เลือก:</span>
+            <span id="coordDisplay" class="text-teal-700 font-semibold">-</span>
+          </div>
+          <input type="hidden" id="fieldLat" required>
+          <input type="hidden" id="fieldLng" required>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block font-semibold mb-1">ระดับความรุนแรง</label>
+            <select id="fieldSeverity" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5 font-semibold">
+              <option value="1">🟢 ทรัพย์สินเสียหาย</option>
+              <option value="2">🟠 มีผู้บาดเจ็บ</option>
+              <option value="3">🔴 มีผู้เสียชีวิต</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">ประเภทพาหนะ</label>
+            <select id="fieldVehicle" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5">
+              <option value="รถจักรยานยนต์">รถจักรยานยนต์</option><option value="รถยนต์">รถยนต์</option><option value="รถบรรทุก / รถโดยสาร">รถบรรทุก / รถโดยสาร</option><option value="รถจักรยาน">รถจักรยาน</option><option value="คนเดินเท้า">คนเดินเท้า</option><option value="อื่น ๆ">อื่น ๆ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">สาเหตุหลัก</label>
+            <select id="fieldCause" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5">
+              <option value="ขับรถเร็วเกินกำหนด">ขับรถเร็วเกินกำหนด</option><option value="ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์">ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์</option><option value="เมาแล้วขับ">เมาแล้วขับ</option><option value="สภาพถนน / ทัศนวิสัย">สภาพถนน / ทัศนวิสัย</option><option value="หลับใน / อ่อนล้า">หลับใน / อ่อนล้า</option><option value="ไม่สวมหมวกนิรภัย">ไม่สวมหมวกนิรภัย</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block font-semibold mb-1">บาดเจ็บ (ราย)</label><input type="number" id="fieldInjured" min="0" value="0" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+          <div><label class="block font-semibold mb-1">เสียชีวิต (ราย)</label><input type="number" id="fieldDeaths" min="0" value="0" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></div>
+        </div>
+        <div><label class="block font-semibold mb-1">หมายเหตุ</label><textarea id="fieldNote" rows="1" class="w-full bg-slate-50 border rounded-lg px-2.5 py-1.5"></textarea></div>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <button type="button" onclick="closeModal()" class="px-3 py-1.5 bg-slate-100 rounded-lg">ยกเลิก</button>
+          <button type="submit" id="submitBtnText" class="px-4 py-1.5 bg-teal-600 text-white rounded-lg font-semibold">บันทึกเหตุการณ์</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notice -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 text-white text-xs px-3.5 py-2 rounded-xl shadow-xl z-50 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+    <span id="toastMsg">สำเร็จ</span>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // ⚠️ หากคุณสร้าง Apps Script แล้ว นำ Web App URL มาใส่ที่นี่
+    const GOOGLE_SCRIPT_URL = '';
+    const ADMIN_PIN = '1234';
+    let isAdmin = false;
+
+    const ZONE_DEFINITIONS = {
+      'ชุมชนตลาดสดเทศบาล': { color: '#ef4444', center: [6.7268, 100.0635], badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+      'ชุมชนโรงเรียนอนุบาลเมืองสตูล': { color: '#3b82f6', center: [6.7215, 100.0658], badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+      'ชุมชนชุมสายโทรศัพท์': { color: '#f59e0b', center: [6.7208688, 100.0669447], badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+      'ชุมชนวัดดุลยาราม': { color: '#8b5cf6', center: [6.7282, 100.0672], badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' }
+    };
+
+    // 📌 ข้อมูลตัวอย่างสำหรับแสดงผลทันทีแบบไม่ให้เป็น 0
+    const sampleData = [
+      { id: 1, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-01-10', time: '08:30', place: 'ถนนเทศบาล 9 (หน้าตลาดสดฉลุง)', vehicle: 'รถจักรยานยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 2, injured: 1, deaths: 0, lat: 6.7271, lng: 100.0636, note: 'ช่วงเช้า' },
+      { id: 2, zone: 'ชุมชนตลาดสดเทศบาล', date: '2026-02-22', time: '17:45', place: 'สามแยกสัญญาณไฟฉลุง', vehicle: 'รถจักรยานยนต์', cause: 'เมาแล้วขับ', severity: 2, injured: 2, deaths: 0, lat: 6.7268, lng: 100.0639, note: 'ช่วงเย็น' },
+      { id: 3, zone: 'ชุมชนวัดดุลยาราม', date: '2026-03-05', time: '21:15', place: 'ถนนยนตรการกำธร (หน้าวัด)', vehicle: 'รถยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 3, injured: 1, deaths: 1, lat: 6.7280, lng: 100.0670, note: 'ช่วงดึก' },
+      { id: 4, zone: 'ชุมชนโรงเรียนอนุบาลเมืองสตูล', date: '2026-04-18', time: '14:20', place: 'หน้าโรงเรียนอนุบาลเมืองสตูล', vehicle: 'รถจักรยานยนต์', cause: 'ขับรถเร็วเกินกำหนด', severity: 2, injured: 1, deaths: 0, lat: 6.7214, lng: 100.0659, note: 'ช่วงบ่าย' },
+      { id: 5, zone: 'ชุมชนชุมสายโทรศัพท์', date: '2026-05-12', time: '18:10', place: 'บริเวณชุมสายโทรศัพท์ฉลุง', vehicle: 'รถยนต์', cause: 'ตัดหน้ากระชั้นชิด / ไม่ตัดสิทธิ์', severity: 1, injured: 0, deaths: 0, lat: 6.7208688, lng: 100.0669447, note: 'ช่วงเย็น' }
+    ];
+
+    let records = [], mainMap = null, modalMap = null, modalMarker = null, mainMapLayers = [];
+    let currentTileLayer = null;
+
+    const tileLayers = {
+      street: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initMainMap();
+      loadData();
+    });
+
+    function showLoading(show) {
+      const badge = document.getElementById('loadingBadge');
+      if (badge) {
+        if (show) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+      }
+    }
+
+    function loadData() {
+      if (GOOGLE_SCRIPT_URL) {
+        showLoading(true);
+        fetch(GOOGLE_SCRIPT_URL)
+          .then(res => res.json())
+          .then(data => {
+            records = (data && data.length > 0) ? data : [...sampleData];
+            populateYearFilter();
+            renderAll();
+            showLoading(false);
+          })
+          .catch(err => {
+            records = [...sampleData];
+            populateYearFilter();
+            renderAll();
+            showLoading(false);
+          });
+      } else {
+        records = [...sampleData];
+        populateYearFilter();
+        renderAll();
+      }
+    }
+
+    function toggleAdminMode() {
+      if (!isAdmin) {
+        const pin = prompt('🔑 กรอกรหัสผ่าน Admin เพื่อเปิดสิทธิ์แอดมิน (รหัส: 1234):');
+        if (pin === ADMIN_PIN) {
+          isAdmin = true;
+          document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin - มีสิทธิ์แก้ไข/ลบ/พิมพ์รายงาน)';
+          document.getElementById('roleBadge').className = 'bg-rose-500/30 text-rose-200 text-[9px] px-2 py-0.5 rounded-full border border-rose-400/40 font-semibold';
+          document.getElementById('adminToggleBtn').innerHTML = '🚪 ออกจากโหมดแอดมิน';
+          
+          document.getElementById('adminSection').classList.remove('hidden');
+          document.getElementById('adminColHeader').classList.remove('hidden');
+          document.getElementById('adminTableBadge').classList.remove('hidden');
+          document.getElementById('adminReportBtn').classList.remove('hidden');
+          document.getElementById('adminExcelBtn').classList.remove('hidden');
+          
+          if (mainMap) { setTimeout(() => mainMap.invalidateSize(), 100); }
+          showToast('เข้าสู่โหมดแอดมินสำเร็จ');
+        } else if (pin !== null) {
+          alert('รหัสผ่านไม่ถูกต้อง');
+        }
+      } else {
+        isAdmin = false;
+        document.getElementById('roleBadge').innerHTML = '👷 โหมดสาธารณะ (ทุกคนเข้าถึงสถิติได้)';
+        document.getElementById('roleBadge').className = 'bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold';
+        document.getElementById('adminToggleBtn').innerHTML = '🔐 เข้าสู่โหมดแอดมิน';
+        
+        document.getElementById('adminSection').classList.add('hidden');
+        document.getElementById('adminColHeader').classList.add('hidden');
+        document.getElementById('adminTableBadge').classList.add('hidden');
+        document.getElementById('adminReportBtn').classList.add('hidden');
+        document.getElementById('adminExcelBtn').classList.add('hidden');
+        
+        showToast('สลับกลับสู่โหมดสาธารณะ');
+      }
+      renderAll();
+    }
+
+    function populateYearFilter() {
+      const years = [...new Set(records.map(r => new Date(r.date).getFullYear() + 543))].sort((a,b) => b-a);
+      const sel = document.getElementById('filterYear');
+      sel.innerHTML = '<option value="all">ทุกปี พ.ศ.</option>';
+      years.forEach(y => sel.innerHTML += `<option value="${y}">พ.ศ. ${y}</option>`);
+    }
+
+    function getFilteredData() {
+      const z = document.getElementById('filterZone').value, y = document.getElementById('filterYear').value;
+      const m = document.getElementById('filterMonth').value;
+      return records.filter(r => {
+        const d = new Date(r.date);
+        return (z === 'all' || r.zone === z) && (y === 'all' || (d.getFullYear() + 543) === parseInt(y)) &&
+               (m === 'all' || (d.getMonth() + 1) === parseInt(m));
+      });
+    }
+
+    function resetFilters() {
+      ['filterZone', 'filterYear', 'filterMonth'].forEach(id => document.getElementById(id).value = 'all');
+      renderAll();
+    }
+
+    function renderAll() {
+      const data = getFilteredData();
+      renderKPIs(data);
+      renderMonthlyChart(data);
+      renderTimeChart(data);
+      renderCauseList(data);
+      if (isAdmin && mainMap) {
+        renderZoneCards(records);
+        renderMainMap(data);
+      }
+      renderTable(data);
+    }
+
+    function renderKPIs(data) {
+      document.getElementById('kpiAccidents').innerText = data.length.toLocaleString();
+      document.getElementById('kpiDeaths').innerText = data.reduce((s, r) => s + (parseInt(r.deaths) || 0), 0).toLocaleString();
+      document.getElementById('kpiInjured').innerText = data.reduce((s, r) => s + (parseInt(r.injured) || 0), 0).toLocaleString();
+      document.getElementById('kpiLocations').innerText = new Set(data.map(r => r.place.trim())).size.toLocaleString();
+    }
+
+    function renderZoneCards(allRecords) {
+      const container = document.getElementById('zoneCardsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      Object.keys(ZONE_DEFINITIONS).forEach(zName => {
+        const zoneData = allRecords.filter(r => r.zone === zName);
+        const acc = zoneData.length, inj = zoneData.reduce((s, r) => s + (parseInt(r.injured) || 0), 0), dth = zoneData.reduce((s, r) => s + (parseInt(r.deaths) || 0), 0);
+        const def = ZONE_DEFINITIONS[zName];
+        container.innerHTML += `
+          <div class="p-3 rounded-2xl border border-slate-200 bg-white shadow-2xs hover:shadow-xs transition flex flex-col justify-between cursor-pointer" onclick="document.getElementById('filterZone').value='${zName}';renderAll();">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-[9px] font-semibold px-2 py-0.5 rounded-full border ${def.badgeClass}">ชุมชน</span>
+                <span class="text-[11px] text-slate-400 font-mono font-bold">${acc} เหตุ</span>
+              </div>
+              <h4 class="text-xs font-bold text-slate-900 line-clamp-1">${zName}</h4>
+            </div>
+            <div class="mt-2 pt-1.5 border-t border-slate-100 flex justify-between text-[11px]">
+              <span class="text-amber-600 font-medium">เจ็บ: <b>${inj}</b></span>
+              <span class="${dth > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">ตาย: <b>${dth}</b></span>
+            </div>
+          </div>`;
+      });
+    }
+
+    function initMainMap() {
+      const mapEl = document.getElementById('mainMap');
+      if (!mapEl) return;
+      mainMap = L.map('mainMap').setView([6.7235, 100.0655], 15);
+      currentTileLayer = tileLayers.street.addTo(mainMap);
+    }
+
+    function setMapLayer(type) {
+      if (!mainMap) return;
+      if (currentTileLayer) { mainMap.removeLayer(currentTileLayer); }
+      const btnStreet = document.getElementById('btnStreet');
+      const btnSat = document.getElementById('btnSat');
+
+      if (type === 'satellite') {
+        currentTileLayer = tileLayers.satellite.addTo(mainMap);
+        btnSat.className = 'px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition';
+        btnStreet.className = 'px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition';
+        showToast('เปลี่ยนเป็นมุมมองภาพดาวเทียม');
+      } else {
+        currentTileLayer = tileLayers.street.addTo(mainMap);
+        btnStreet.className = 'px-2.5 py-1 rounded-md bg-teal-600 text-white font-semibold transition';
+        btnSat.className = 'px-2.5 py-1 rounded-md text-slate-700 hover:bg-slate-100 font-semibold transition';
+        showToast('เปลี่ยนเป็นแผนที่ถนน');
+      }
+    }
+
+    function renderMainMap(data) {
+      if (!mainMap) return;
+      mainMapLayers.forEach(l => mainMap.removeLayer(l));
+      mainMapLayers = [];
+
+      const boundaryCoords = [
+        [6.7310, 100.0610],
+        [6.7320, 100.0700],
+        [6.7250, 100.0725],
+        [6.7170, 100.0680],
+        [6.7165, 100.0610],
+        [6.7220, 100.0580]
+      ];
+      
+      const municipalityPolygon = L.polygon(boundaryCoords, {
+        color: '#0284c7', weight: 3, dashArray: '6,6', fillColor: '#38bdf8', fillOpacity: 0.15
+      }).addTo(mainMap);
+      
+      mainMapLayers.push(municipalityPolygon);
+
+      data.forEach(r => {
+        if (!r.lat || !r.lng) return;
+        let colorClass = r.severity == 3 ? 'bg-rose-600 ring-2 ring-rose-200' : (r.severity == 2 ? 'bg-amber-500' : 'bg-emerald-500');
+        const icon = L.divIcon({ className: 'custom-div-icon', html: `<div class="w-3.5 h-3.5 rounded-full ${colorClass} border-2 border-white shadow-xs"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] });
+        const marker = L.marker([r.lat, r.lng], { icon }).addTo(mainMap);
+        marker.bindPopup(`<div class="text-[11px] space-y-0.5"><span class="font-bold text-teal-800">[${escapeHtml(r.zone)}]</span><br><b class="text-slate-900">${escapeHtml(r.place)}</b><br>บาดเจ็บ ${r.injured} | เสียชีวิต ${r.deaths}</div>`);
+        mainMapLayers.push(marker);
+      });
+    }
+
+    function renderMonthlyChart(data) {
+      const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+      const counts = new Array(12).fill(0);
+      data.forEach(r => {
+        const d = new Date(r.date);
+        if(!isNaN(d)) counts[d.getMonth()]++;
+      });
+      const maxVal = Math.max(...counts, 1);
+      const container = document.getElementById('monthlyChartContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      counts.forEach((c, idx) => {
+        const pct = (c / maxVal) * 100;
+        container.innerHTML += `
+          <div class="flex-1 flex flex-col items-center h-full justify-end">
+            <span class="text-[8px] text-slate-500 mb-0.5">${c > 0 ? c : ''}</span>
+            <div class="w-full bg-slate-100 rounded-t flex items-end" style="height: 80px;">
+              <div class="w-full bg-teal-500 rounded-t transition-all duration-300" style="height: ${pct}%;"></div>
+            </div>
+            <span class="text-[9px] text-slate-600 mt-1">${months[idx]}</span>
+          </div>`;
+      });
+    }
+
+    function renderTimeChart(data) {
+      const slots = { 'เช้า (06-12 น.)': 0, 'บ่าย (12-16 น.)': 0, 'เย็น (16-20 น.)': 0, 'ดึก (20-06 น.)': 0 };
+      data.forEach(r => {
+        if (!r.time) return;
+        const hr = parseInt(r.time.split(':')[0]);
+        if (hr >= 6 && hr < 12) slots['เช้า (06-12 น.)']++;
+        else if (hr >= 12 && hr < 16) slots['บ่าย (12-16 น.)']++;
+        else if (hr >= 16 && hr < 20) slots['เย็น (16-20 น.)']++;
+        else slots['ดึก (20-06 น.)']++;
+      });
+      const maxVal = Math.max(...Object.values(slots), 1);
+      const container = document.getElementById('timeChartContainer');
+      if (!container) return;
+      container.innerHTML = '';
+      Object.entries(slots).forEach(([label, count]) => {
+        const pct = Math.round((count / maxVal) * 100);
+        container.innerHTML += `
+          <div class="space-y-0.5">
+            <div class="flex justify-between text-[10px] font-medium"><span class="text-slate-700">${label}</span><span class="font-bold text-slate-900">${count} ครั้ง</span></div>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width: ${pct}%;"></div></div>
+          </div>`;
+      });
+    }
+
+    function renderCauseList(data) {
+      const causeMap = {};
+      data.forEach(r => causeMap[r.cause] = (causeMap[r.cause] || 0) + 1);
+      const sorted = Object.entries(causeMap).sort((a,b) => b[1] - a[1]);
+      const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
+      const container = document.getElementById('causeListContainer');
+      if (!container) return;
+      container.innerHTML = sorted.length === 0 ? '<div class="text-xs text-slate-400 text-center py-2">ไม่มีข้อมูล</div>' : '';
+      sorted.slice(0, 4).forEach(([cause, count]) => {
+        const pct = Math.round((count / maxVal) * 100);
+        container.innerHTML += `
+          <div class="space-y-0.5">
+            <div class="flex justify-between text-[10px] font-medium"><span class="text-slate-700 truncate max-w-[180px]">${escapeHtml(cause)}</span><span class="font-bold text-slate-900">${count} ครั้ง</span></div>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-amber-500 rounded-full" style="width: ${pct}%;"></div></div>
+          </div>`;
+      });
+    }
+
+    function renderTable(providedData = null) {
+      const data = providedData || getFilteredData();
+      const q = (document.getElementById('searchInput').value || '').toLowerCase();
+      
+      const filtered = data.filter(r => 
+        (r.zone && r.zone.toLowerCase().includes(q)) ||
+        r.place.toLowerCase().includes(q) ||
+        r.cause.toLowerCase().includes(q) ||
+        r.vehicle.toLowerCase().includes(q)
+      ).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+      const tbody = document.getElementById('tableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400 font-medium">ไม่พบรายการข้อมูล</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(r => {
+        const tr = document.createElement('tr');
+        const zDef = ZONE_DEFINITIONS[r.zone] || { badgeClass: 'bg-slate-100 text-slate-700 border-slate-300' };
+        
+        let sevBadge = r.severity == 3 ? '<span class="bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded text-[9px]">🔴 เสียชีวิต</span>' :
+                       (r.severity == 2 ? '<span class="bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded text-[9px]">🟠 บาดเจ็บ</span>' :
+                       '<span class="bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded text-[9px]">🟢 ทรัพย์สิน</span>');
+
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3"><div class="font-semibold text-slate-900">${formatDate(r.date)}</div><div class="text-[9px] text-slate-400">${r.time || '-'}</div></td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${zDef.badgeClass}">📍 ${escapeHtml(r.zone)}</span>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-slate-800">${escapeHtml(r.place)}</td>
+          <td class="py-2.5 px-3">${sevBadge}<div class="text-[9px] text-slate-500 mt-0.5">${escapeHtml(r.vehicle)} | ${escapeHtml(r.cause)}</div></td>
+          <td class="py-2.5 px-3 text-center font-bold text-amber-600">${r.injured}</td>
+          <td class="py-2.5 px-3 text-center font-bold ${r.deaths > 0 ? 'text-rose-600 bg-rose-50 rounded' : 'text-slate-400'}">${r.deaths}</td>
+          <td class="py-2.5 px-3 text-center font-mono text-[10px] text-teal-700">${r.lat ? parseFloat(r.lat).toFixed(4) + ', ' + parseFloat(r.lng).toFixed(4) : '-'}</td>
+          ${isAdmin ? `
+            <td class="py-2.5 px-3 text-center no-print space-x-1">
+              <button onclick="openModalForEdit(${r.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-lg text-[10px] font-bold transition">✏️ แก้ไข</button>
+              <button onclick="deleteRecord(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded-lg text-[10px] font-bold transition">🗑️ ลบ</button>
+            </td>` : ''}
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModalForAdd() {
+      document.getElementById('accidentForm').reset();
+      document.getElementById('editingId').value = '';
+      document.getElementById('modalTitle').innerText = '📝 บันทึกข้อมูลอุบัติเหตุทางถนน';
+      document.getElementById('submitBtnText').innerText = 'บันทึกเหตุการณ์';
+      document.getElementById('recordModal').classList.remove('hidden');
+      document.getElementById('fieldDate').valueAsDate = new Date();
+      
+      setTimeout(() => {
+        initOrRefreshModalMap();
+        handleZoneChangeInModal();
+      }, 150);
+    }
+
+    function openModalForEdit(id) {
+      const record = records.find(r => r.id == id);
+      if (!record) return;
+
+      document.getElementById('editingId').value = record.id;
+      document.getElementById('fieldDate').value = record.date;
+      document.getElementById('fieldTime').value = record.time || '';
+      document.getElementById('fieldPlace').value = record.place;
+      document.getElementById('fieldZone').value = record.zone;
+      document.getElementById('fieldSeverity').value = record.severity || 1;
+      document.getElementById('fieldVehicle').value = record.vehicle;
+      document.getElementById('fieldCause').value = record.cause;
+      document.getElementById('fieldInjured').value = record.injured;
+      document.getElementById('fieldDeaths').value = record.deaths;
+      document.getElementById('fieldNote').value = record.note || '';
+
+      document.getElementById('modalTitle').innerText = '✏️ แก้ไขข้อมูลอุบัติเหตุ (โหมดแอดมิน)';
+      document.getElementById('submitBtnText').innerText = 'บันทึกการแก้ไข';
+      document.getElementById('recordModal').classList.remove('hidden');
+
+      setTimeout(() => {
+        initOrRefreshModalMap();
+        setModalMarker(record.lat, record.lng, false);
+      }, 150);
+    }
+
+    function closeModal() { document.getElementById('recordModal').classList.add('hidden'); }
+
+    function initOrRefreshModalMap() {
+      if (!modalMap) {
+        modalMap = L.map('modalMap').setView([6.7235, 100.0655], 15);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(modalMap);
+        modalMap.on('click', e => setModalMarker(e.latlng.lat, e.latlng.lng, false));
+      } else {
+        modalMap.invalidateSize();
+      }
+    }
+
+    function handleZoneChangeInModal() {
+      const selectedZone = document.getElementById('fieldZone').value;
+      const zDef = ZONE_DEFINITIONS[selectedZone];
+      if (zDef) {
+        setModalMarker(zDef.center[0], zDef.center[1], false);
+      }
+    }
+
+    function setModalMarker(lat, lng, autoDetect = true) {
+      document.getElementById('fieldLat').value = lat;
+      document.getElementById('fieldLng').value = lng;
+      document.getElementById('coordDisplay').innerText = `${parseFloat(lat).toFixed(6)}, ${parseFloat(lng).toFixed(6)}`;
+      
+      if(modalMap) {
+        if(modalMarker) {
+          modalMarker.setLatLng([lat, lng]);
+        } else {
+          modalMarker = L.marker([lat, lng], { draggable: true }).addTo(modalMap);
+          modalMarker.on('dragend', function() {
+            const pos = modalMarker.getLatLng();
+            setModalMarker(pos.lat, pos.lng, false);
+          });
+        }
+        modalMap.setView([lat, lng], 16);
+      }
+    }
+
+    function getCurrentGPSLocation() {
+      if(!navigator.geolocation) { alert('เบราว์เซอร์ไม่รองรับ GPS'); return; }
+      showToast('กำลังดึงพิกัด GPS...');
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setModalMarker(pos.coords.latitude, pos.coords.longitude, true);
+          showToast('จับพิกัดปัจจุบันสำเร็จ');
+        }, 
+        err => {
+          handleZoneChangeInModal();
+          showToast('ไม่สามารถเข้าถึง GPS ได้ - ใช้พิกัดกลางชุมชนแทน');
+        }, 
+        { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+      );
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const lat = parseFloat(document.getElementById('fieldLat').value), lng = parseFloat(document.getElementById('fieldLng').value);
+      if(!lat || !lng) { alert('กรุณาระบุพิกัด GPS บนแผนที่'); return; }
+
+      const editingId = document.getElementById('editingId').value;
+      const payloadData = {
+        id: editingId ? editingId : Date.now(),
+        zone: document.getElementById('fieldZone').value,
+        date: document.getElementById('fieldDate').value,
+        time: document.getElementById('fieldTime').value,
+        place: document.getElementById('fieldPlace').value.trim(),
+        severity: parseInt(document.getElementById('fieldSeverity').value),
+        vehicle: document.getElementById('fieldVehicle').value,
+        cause: document.getElementById('fieldCause').value,
+        injured: parseInt(document.getElementById('fieldInjured').value) || 0,
+        deaths: parseInt(document.getElementById('fieldDeaths').value) || 0,
+        lat, lng,
+        note: document.getElementById('fieldNote').value.trim()
+      };
+
+      closeModal();
+
+      if (GOOGLE_SCRIPT_URL) {
+        showLoading(true);
+        fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: editingId ? 'update' : 'create',
+            data: payloadData
+          })
+        })
+        .then(res => res.json())
+        .then(res => {
+          showToast(editingId ? 'แก้ไขข้อมูลสำเร็จ' : 'บันทึกเหตุการณ์สำเร็จ');
+          loadData();
+        })
+        .catch(err => {
+          showToast('บันทึกในเครื่องเรียบร้อย');
+          saveLocalRecord(payloadData, editingId);
+        });
+      } else {
+        saveLocalRecord(payloadData, editingId);
+      }
+    }
+
+    function saveLocalRecord(payloadData, editingId) {
+      if (editingId) {
+        const idx = records.findIndex(r => r.id == editingId);
+        if (idx !== -1) records[idx] = payloadData;
+      } else {
+        records.unshift(payloadData);
+      }
+      showToast(editingId ? 'แก้ไขข้อมูลสำเร็จ' : 'บันทึกเหตุการณ์สำเร็จ');
+      populateYearFilter();
+      renderAll();
+    }
+
+    function deleteRecord(id) {
+      if(confirm('⚠️ คำเตือน: คุณกำลังจะลบข้อมูลอุบัติเหตุนี้ ยืนยันการลบ?')) { 
+        if (GOOGLE_SCRIPT_URL) {
+          showLoading(true);
+          fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete', data: { id } })
+          })
+          .then(res => res.json())
+          .then(res => {
+            showToast('ลบรายการสำเร็จ');
+            loadData();
+          });
+        } else {
+          records = records.filter(r => r.id != id);
+          populateYearFilter();
+          renderAll();
+          showToast('ลบรายการสำเร็จ');
+        }
+      }
+    }
+
+    function exportCSV() {
+      let csv = "\uFEFFวันที่,เวลา,ชุมชน,สถานที่,พาหนะ,สาเหตุ,บาดเจ็บ,เสียชีวิต,Lat,Lng\n";
+      records.forEach(r => {
+        csv += `"${r.date}","${r.time}","${r.zone}","${r.place}","${r.vehicle}","${r.cause}",${r.injured},${r.deaths},${r.lat},${r.lng}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `สถิติอุบัติเหตุ_เทศบาลตำบลฉลุง_${new Date().toISOString().slice(0,10)}.csv`;
+      link.click();
+      showToast('ดาวน์โหลดไฟล์ CSV สำเร็จ');
+    }
+
+    function formatDate(dStr) {
+      if(!dStr) return '';
+      const d = new Date(dStr);
+      if(isNaN(d)) return dStr;
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`;
+    }
+    function escapeHtml(str) { return str ? str.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : ''; }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      t.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => t.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none'), 3000);
+    }
+  </script>
+</body>
+</html>
