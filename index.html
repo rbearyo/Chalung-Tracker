@@ -233,7 +233,7 @@
 
   </main>
 
-  <!-- Modal เข้าสู่ระบบแอดมิน -->
+  <!-- Modal เข้าสู่ระบบแอดมิน (ปลอดภัย ไร้การเปิดเผยรหัสผ่าน) -->
   <div id="loginModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border text-xs">
       <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
@@ -242,15 +242,12 @@
       </div>
       <form onsubmit="handleAdminLogin(event)" class="p-5 space-y-3">
         <div>
-          <label class="block font-semibold mb-1">ชื่อผู้ใช้งาน (Username หรือ Email)</label>
-          <input type="text" id="loginUser" required placeholder="ระบุชื่อแอดมิน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+          <label class="block font-semibold mb-1">ชื่อผู้ใช้งาน (Username)</label>
+          <input type="text" id="loginUser" required placeholder="ระบุชื่อผู้ใช้งาน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
         </div>
         <div>
           <label class="block font-semibold mb-1">รหัสผ่าน (Password)</label>
-          <input type="password" id="loginPass" required placeholder="ระบุรหัสผ่านแอดมิน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
-        </div>
-        <div class="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-lg text-[11px]">
-          💡 รหัสผ่านเริ่มต้นระบบคือ: <code class="font-bold bg-amber-100 px-1 py-0.5 rounded">11202721</code> หรือใช้รหัสผ่านของบัญชีแอดมินที่ลงทะเบียนไว้
+          <input type="password" id="loginPass" required placeholder="ระบุรหัสผ่าน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t">
           <button type="button" onclick="closeLoginModal()" class="px-3 py-1.5 bg-slate-100 rounded-lg">ยกเลิก</button>
@@ -277,12 +274,12 @@
           <input type="text" id="regUser" required placeholder="ระบุ Username สำหรับเข้าสู่ระบบ" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
         </div>
         <div>
-          <label class="block font-semibold mb-1">รหัสผ่าน (Password) *</label>
+          <label class="block font-semibold mb-1">รหัสผ่านใหม่ (Password) *</label>
           <input type="password" id="regPass" required placeholder="กำหนดรหัสผ่าน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
         </div>
         <div>
-          <label class="block font-semibold mb-1">ยืนยันรหัสผ่าน Master Admin *</label>
-          <input type="password" id="regMasterPass" required placeholder="ใส่รหัสผ่านหลักเพื่ออนุมัติ (11202721)" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+          <label class="block font-semibold mb-1">รหัสผ่านยืนยันสิทธิ์ Master Admin *</label>
+          <input type="password" id="regMasterPass" required placeholder="ใส่รหัสผ่านผู้ดูแลระบบสูงสุดเพื่อยืนยัน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t">
           <button type="button" onclick="closeRegisterModal()" class="px-3 py-1.5 bg-slate-100 rounded-lg">ยกเลิก</button>
@@ -374,11 +371,9 @@
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
     let isAdmin = false;
 
-    // ระบบจัดการแอดมินและรหัสผ่าน (บันทึกใน localStorage)
     function getRegisteredAdmins() {
       let admins = JSON.parse(localStorage.getItem('chalung_admins')) || [];
       if (admins.length === 0) {
-        // แอดมินเริ่มต้นระบบ
         admins = [{ name: 'Master Admin', username: 'admin', password: '11202721' }];
         localStorage.setItem('chalung_admins', JSON.stringify(admins));
       }
@@ -401,7 +396,7 @@
     };
 
     window.addEventListener('DOMContentLoaded', () => {
-      getRegisteredAdmins(); // Init ค่าแอดมินเริ่มต้น
+      getRegisteredAdmins();
       initMainMap();
       loadRecordsFromGoogleSheets(true);
 
@@ -439,7 +434,6 @@
         });
     }
 
-    // จัดการคลิกปุ่มแอดมิน (เข้าสู่ระบบ หรือ ออกจากระบบ)
     function handleAdminToggleClick() {
       if (!isAdmin) {
         document.getElementById('loginModal').classList.remove('hidden');
@@ -465,9 +459,9 @@
         document.getElementById('loginUser').value = '';
         document.getElementById('loginPass').value = '';
         toggleAdminMode(true);
-        showToast('🔓 เข้าสู่ระบบแอดมินสำเร็จ (ยินดีต้อนรับ ' + (found ? found.name : 'Admin') + ')');
+        showToast('🔓 เข้าสู่ระบบแอดมินสำเร็จ');
       } else {
-        alert('❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (รหัสผ่านหลักคือ 11202721)');
+        alert('❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
       }
     }
 
@@ -479,7 +473,6 @@
       document.getElementById('registerModal').classList.add('hidden');
     }
 
-    // ระบบลงทะเบียนแอดมินใหม่
     function handleAdminRegister(e) {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
@@ -494,7 +487,7 @@
 
       let admins = getRegisteredAdmins();
       if (admins.some(a => a.username === username)) {
-        alert('⚠️ ชื่อผู้ใช้งาน (Username) นี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น');
+        alert('⚠️ ชื่อผู้ใช้งาน (Username) นี้มีอยู่ในระบบแล้ว');
         return;
       }
 
@@ -507,7 +500,7 @@
       document.getElementById('regPass').value = '';
       document.getElementById('regMasterPass').value = '';
 
-      showToast('✅ ลงทะเบียนแอดมินใหม่สำเร็จ! สามารถใช้เข้าสู่ระบบได้ทันที');
+      showToast('✅ ลงทะเบียนแอดมินใหม่สำเร็จ!');
     }
 
     function toggleAdminMode(status) {
