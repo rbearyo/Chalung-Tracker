@@ -79,9 +79,12 @@
         <button id="adminExcelBtn" onclick="exportCSV()" class="hidden bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition items-center gap-1">
           📥 โหลด Excel (CSV)
         </button>
+        <button id="registerAdminBtn" onclick="openRegisterModal()" class="hidden bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition items-center gap-1">
+          👤 สมัครแอดมินใหม่
+        </button>
         
         <div class="h-4 w-[1px] bg-slate-700 my-auto"></div>
-        <button id="adminToggleBtn" onclick="toggleAdminMode()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+        <button id="adminToggleBtn" onclick="handleAdminToggleClick()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
           🔐 เข้าสู่โหมดแอดมิน
         </button>
       </div>
@@ -122,7 +125,7 @@
       <button onclick="loadRecordsFromGoogleSheets(true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg font-semibold text-xs transition">🔄 รีเฟรชข้อมูลจากชีต</button>
     </div>
 
-    <!-- KPIs สรุปผล (เพิ่มกรอบพื้นหลังขาวให้ไอคอนโดดเด่นชัดเจน) -->
+    <!-- KPIs สรุปผล -->
     <section class="space-y-3">
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -130,7 +133,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">อุบัติเหตุรวม</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiAccidents">0</h3>
           </div>
-          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">🚗</div>
+          <div class="text-2xl opacity-20">🚗</div>
         </div>
 
         <div class="bg-gradient-to-br from-rose-600 to-red-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -138,7 +141,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">ผู้เสียชีวิต</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiDeaths">0</h3>
           </div>
-          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">✝️</div>
+          <div class="text-2xl opacity-20">✝️</div>
         </div>
 
         <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -146,7 +149,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">ผู้บาดเจ็บ</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiInjured">0</h3>
           </div>
-          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">🩹</div>
+          <div class="text-2xl opacity-20">🩹</div>
         </div>
 
         <div class="bg-gradient-to-br from-teal-600 to-emerald-700 text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between">
@@ -154,7 +157,7 @@
             <p class="text-[10px] uppercase font-semibold opacity-80">จุดเกิดเหตุ</p>
             <h3 class="text-2xl font-extrabold mt-0.5" id="kpiLocations">0</h3>
           </div>
-          <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shadow-xs">📍</div>
+          <div class="text-2xl opacity-20">📍</div>
         </div>
       </div>
     </section>
@@ -230,7 +233,66 @@
 
   </main>
 
-  <!-- Modal บันทึก/แก้ไขข้อมูล -->
+  <!-- Modal เข้าสู่ระบบแอดมิน -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border text-xs">
+      <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
+        <h3 class="font-bold">🔐 เข้าสู่ระบบผู้ดูแลระบบ (Admin)</h3>
+        <button onclick="closeLoginModal()" class="text-slate-400">✕</button>
+      </div>
+      <form onsubmit="handleAdminLogin(event)" class="p-5 space-y-3">
+        <div>
+          <label class="block font-semibold mb-1">ชื่อผู้ใช้งาน (Username หรือ Email)</label>
+          <input type="text" id="loginUser" required placeholder="ระบุชื่อแอดมิน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">รหัสผ่าน (Password)</label>
+          <input type="password" id="loginPass" required placeholder="ระบุรหัสผ่านแอดมิน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div class="bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-lg text-[11px]">
+          💡 รหัสผ่านเริ่มต้นระบบคือ: <code class="font-bold bg-amber-100 px-1 py-0.5 rounded">11202721</code> หรือใช้รหัสผ่านของบัญชีแอดมินที่ลงทะเบียนไว้
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <button type="button" onclick="closeLoginModal()" class="px-3 py-1.5 bg-slate-100 rounded-lg">ยกเลิก</button>
+          <button type="submit" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-semibold">เข้าสู่ระบบ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal ลงทะเบียนแอดมินใหม่ -->
+  <div id="registerModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border text-xs">
+      <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
+        <h3 class="font-bold">👤 ลงทะเบียนบัญชีผู้ดูแลระบบ (Admin) ใหม่</h3>
+        <button onclick="closeRegisterModal()" class="text-slate-400">✕</button>
+      </div>
+      <form onsubmit="handleAdminRegister(event)" class="p-5 space-y-3">
+        <div>
+          <label class="block font-semibold mb-1">ชื่อ-นามสกุล / ชื่อแอดมิน *</label>
+          <input type="text" id="regName" required placeholder="เช่น นายสมชาย แอดมินฉลุง" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">ชื่อผู้ใช้งาน (Username) *</label>
+          <input type="text" id="regUser" required placeholder="ระบุ Username สำหรับเข้าสู่ระบบ" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">รหัสผ่าน (Password) *</label>
+          <input type="password" id="regPass" required placeholder="กำหนดรหัสผ่าน" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block font-semibold mb-1">ยืนยันรหัสผ่าน Master Admin *</label>
+          <input type="password" id="regMasterPass" required placeholder="ใส่รหัสผ่านหลักเพื่ออนุมัติ (11202721)" class="w-full bg-slate-50 border rounded-lg px-3 py-2">
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <button type="button" onclick="closeRegisterModal()" class="px-3 py-1.5 bg-slate-100 rounded-lg">ยกเลิก</button>
+          <button type="submit" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-semibold">ลงทะเบียนแอดมิน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal บันทึก/แก้ไขข้อมูลอุบัติเหตุ -->
   <div id="recordModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border text-xs">
       <div class="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
@@ -312,6 +374,17 @@
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7UtXPtamJGYARgKd45yA80C_9FpDM8MD3cz12ub0lnVzIELDSu4yH-QN1e7uQqtCBWQ/exec';
     let isAdmin = false;
 
+    // ระบบจัดการแอดมินและรหัสผ่าน (บันทึกใน localStorage)
+    function getRegisteredAdmins() {
+      let admins = JSON.parse(localStorage.getItem('chalung_admins')) || [];
+      if (admins.length === 0) {
+        // แอดมินเริ่มต้นระบบ
+        admins = [{ name: 'Master Admin', username: 'admin', password: '11202721' }];
+        localStorage.setItem('chalung_admins', JSON.stringify(admins));
+      }
+      return admins;
+    }
+
     const ZONE_DEFINITIONS = {
       'ชุมชนตลาดสดเทศบาล': { color: '#ef4444', center: [6.7268, 100.0635], badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
       'ชุมชนโรงเรียนอนุบาลเมืองสตูล': { color: '#3b82f6', center: [6.7215, 100.0658], badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -328,10 +401,10 @@
     };
 
     window.addEventListener('DOMContentLoaded', () => {
+      getRegisteredAdmins(); // Init ค่าแอดมินเริ่มต้น
       initMainMap();
       loadRecordsFromGoogleSheets(true);
 
-      // โหลดข้อมูลอัตโนมัติจาก Google Sheets ทุก 15 วินาที
       setInterval(() => {
         loadRecordsFromGoogleSheets(false);
       }, 15000);
@@ -366,9 +439,80 @@
         });
     }
 
-    function toggleAdminMode() {
+    // จัดการคลิกปุ่มแอดมิน (เข้าสู่ระบบ หรือ ออกจากระบบ)
+    function handleAdminToggleClick() {
       if (!isAdmin) {
-        isAdmin = true;
+        document.getElementById('loginModal').classList.remove('hidden');
+      } else {
+        toggleAdminMode(false);
+      }
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+    }
+
+    function handleAdminLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPass').value.trim();
+
+      const admins = getRegisteredAdmins();
+      const found = admins.find(a => (a.username === u || a.name === u) && a.password === p);
+
+      if (found || (u === 'admin' && p === '11202721')) {
+        closeLoginModal();
+        document.getElementById('loginUser').value = '';
+        document.getElementById('loginPass').value = '';
+        toggleAdminMode(true);
+        showToast('🔓 เข้าสู่ระบบแอดมินสำเร็จ (ยินดีต้อนรับ ' + (found ? found.name : 'Admin') + ')');
+      } else {
+        alert('❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (รหัสผ่านหลักคือ 11202721)');
+      }
+    }
+
+    function openRegisterModal() {
+      document.getElementById('registerModal').classList.remove('hidden');
+    }
+
+    function closeRegisterModal() {
+      document.getElementById('registerModal').classList.add('hidden');
+    }
+
+    // ระบบลงทะเบียนแอดมินใหม่
+    function handleAdminRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const username = document.getElementById('regUser').value.trim();
+      const password = document.getElementById('regPass').value.trim();
+      const masterPass = document.getElementById('regMasterPass').value.trim();
+
+      if (masterPass !== '11202721') {
+        alert('❌ รหัสผ่าน Master Admin ไม่ถูกต้อง ไม่สามารถลงทะเบียนได้');
+        return;
+      }
+
+      let admins = getRegisteredAdmins();
+      if (admins.some(a => a.username === username)) {
+        alert('⚠️ ชื่อผู้ใช้งาน (Username) นี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น');
+        return;
+      }
+
+      admins.push({ name, username, password });
+      localStorage.setItem('chalung_admins', JSON.stringify(admins));
+
+      closeRegisterModal();
+      document.getElementById('regName').value = '';
+      document.getElementById('regUser').value = '';
+      document.getElementById('regPass').value = '';
+      document.getElementById('regMasterPass').value = '';
+
+      showToast('✅ ลงทะเบียนแอดมินใหม่สำเร็จ! สามารถใช้เข้าสู่ระบบได้ทันที');
+    }
+
+    function toggleAdminMode(status) {
+      isAdmin = status;
+      if (isAdmin) {
         document.getElementById('roleBadge').innerHTML = '🔒 โหมดผู้ดูแลระบบ (Admin)';
         document.getElementById('roleBadge').className = 'bg-rose-500/30 text-rose-200 text-[9px] px-2 py-0.5 rounded-full border border-rose-400/40 font-semibold';
         document.getElementById('adminToggleBtn').innerHTML = '🚪 ออกจากโหมดแอดมิน';
@@ -378,11 +522,10 @@
         document.getElementById('adminTableBadge').classList.remove('hidden');
         document.getElementById('adminReportBtn').classList.remove('hidden');
         document.getElementById('adminExcelBtn').classList.remove('hidden');
+        document.getElementById('registerAdminBtn').classList.remove('hidden');
         
         if (mainMap) { setTimeout(() => mainMap.invalidateSize(), 100); }
-        showToast('เข้าสู่โหมดแอดมินสำเร็จ');
       } else {
-        isAdmin = false;
         document.getElementById('roleBadge').innerHTML = '👷 โหมดสาธารณะ';
         document.getElementById('roleBadge').className = 'bg-indigo-500/30 text-indigo-200 text-[9px] px-2 py-0.5 rounded-full border border-indigo-400/40 font-semibold';
         document.getElementById('adminToggleBtn').innerHTML = '🔐 เข้าสู่โหมดแอดมิน';
@@ -392,6 +535,7 @@
         document.getElementById('adminTableBadge').classList.add('hidden');
         document.getElementById('adminReportBtn').classList.add('hidden');
         document.getElementById('adminExcelBtn').classList.add('hidden');
+        document.getElementById('registerAdminBtn').classList.add('hidden');
         
         showToast('สลับกลับสู่โหมดสาธารณะ');
       }
@@ -542,7 +686,6 @@
       });
     }
 
-    // 🕒 ฟังก์ชันคำนวณช่วงเวลาเกิดเหตุเสี่ยงสูงสุด (รองรับเวลาทุกรูปแบบในชีต)
     function renderTimeChart(data) {
       const slots = {
         'เช้า (06-12 น.)': 0,
@@ -553,35 +696,24 @@
 
       data.forEach(r => {
         if (!r.time) return;
-        
         let hr = NaN;
         let timeStr = r.time.toString().trim();
 
         if (timeStr.includes(':')) {
           const match = timeStr.match(/(\d{2}):(\d{2})/);
-          if (match) {
-            hr = parseInt(match[1], 10);
-          } else {
-            const parts = timeStr.split(':');
-            hr = parseInt(parts[0], 10);
-          }
-        } 
-        else if (!isNaN(timeStr) && timeStr !== '') {
+          if (match) { hr = parseInt(match[1], 10); } 
+          else { const parts = timeStr.split(':'); hr = parseInt(parts[0], 10); }
+        } else if (!isNaN(timeStr) && timeStr !== '') {
           const totalMinutes = Math.round(parseFloat(timeStr) * 24 * 60);
           hr = Math.floor(totalMinutes / 60) % 24;
         }
 
         if (isNaN(hr)) return;
 
-        if (hr >= 6 && hr < 12) {
-          slots['เช้า (06-12 น.)']++;
-        } else if (hr >= 12 && hr < 16) {
-          slots['บ่าย (12-16 น.)']++;
-        } else if (hr >= 16 && hr < 20) {
-          slots['เย็น (16-20 น.)']++;
-        } else {
-          slots['ดึก (20-06 น.)']++;
-        }
+        if (hr >= 6 && hr < 12) { slots['เช้า (06-12 น.)']++; } 
+        else if (hr >= 12 && hr < 16) { slots['บ่าย (12-16 น.)']++; } 
+        else if (hr >= 16 && hr < 20) { slots['เย็น (16-20 น.)']++; } 
+        else { slots['ดึก (20-06 น.)']++; }
       });
 
       const maxVal = Math.max(...Object.values(slots), 1);
@@ -734,9 +866,7 @@
     function handleZoneChangeInModal() {
       const selectedZone = document.getElementById('fieldZone').value;
       const zDef = ZONE_DEFINITIONS[selectedZone];
-      if (zDef) {
-        setModalMarker(zDef.center[0], zDef.center[1], false);
-      }
+      if (zDef) { setModalMarker(zDef.center[0], zDef.center[1], false); }
     }
 
     function setModalMarker(lat, lng, autoDetect = true) {
